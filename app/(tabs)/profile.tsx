@@ -1,46 +1,95 @@
-import { View, StyleSheet } from 'react-native';
-import { ChevronRight, Heart, Watch, Users, Bell, Shield, HelpCircle } from 'lucide-react-native';
+import { Alert, View, StyleSheet } from 'react-native';
+import { useRouter } from 'expo-router';
+import {
+  ChevronRight,
+  Heart,
+  Watch,
+  Users,
+  Bell,
+  Shield,
+  HelpCircle,
+  Sun,
+  RotateCcw,
+} from 'lucide-react-native';
 
 import { Screen } from '@/components/velo/Screen';
 import { Text } from '@/components/velo/Text';
 import { Card } from '@/components/velo/Card';
 import { Colors, Spacing } from '@/constants/theme';
+import { useUserStore } from '@/stores/userStore';
+import { SPORT_LABEL } from '@/lib/constants';
 
 export default function ProfileScreen() {
+  const router = useRouter();
+  const profile = useUserStore((s) => s.profile);
+  const resetForDev = useUserStore((s) => s.resetForDev);
+
+  const initial = profile.name?.[0]?.toUpperCase() ?? 'V';
+  const sportLabel = profile.sport ? SPORT_LABEL[profile.sport] : 'Athlete';
+
+  const handleReset = () => {
+    Alert.alert(
+      'Reset onboarding?',
+      'For testing only. Clears your profile and sends you back to onboarding.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Reset',
+          style: 'destructive',
+          onPress: () => {
+            resetForDev();
+            router.replace('/');
+          },
+        },
+      ],
+    );
+  };
+
   return (
     <Screen>
       <View style={styles.header}>
         <View style={styles.avatar}>
           <Text variant="title" weight="bold" style={{ color: '#0a0a0a' }}>
-            A
+            {initial}
           </Text>
         </View>
         <Text variant="display" weight="bold" style={{ marginTop: Spacing.md }}>
-          Athlete
+          {profile.name || sportLabel}
         </Text>
         <Text variant="body" color="muted">
-          Setup your profile to personalize Velo
+          {sportLabel} · {profile.targets.calories} kcal/day
         </Text>
       </View>
 
       <Text variant="label" color="muted" style={styles.sectionLabel}>
+        Today
+      </Text>
+
+      <SettingRow
+        icon={<Sun size={20} color={Colors.dark.accent} strokeWidth={2} />}
+        title="Wellness check-in"
+        subtitle="Log sleep, energy, soreness"
+        onPress={() => router.push('/wellness')}
+      />
+
+      <Text variant="label" color="muted" style={[styles.sectionLabel, { marginTop: Spacing.xl }]}>
         Connections
       </Text>
 
       <SettingRow
         icon={<Heart size={20} color={Colors.dark.accent} strokeWidth={2} />}
         title="Apple Health"
-        subtitle="Not connected"
+        subtitle="Coming soon"
       />
       <SettingRow
         icon={<Watch size={20} color={Colors.dark.textMuted} strokeWidth={2} />}
         title="Strava"
-        subtitle="Not connected"
+        subtitle="Coming soon"
       />
       <SettingRow
         icon={<Users size={20} color={Colors.dark.textMuted} strokeWidth={2} />}
         title="Join a team"
-        subtitle="Enter coach invite code"
+        subtitle="Coming soon"
       />
 
       <Text variant="label" color="muted" style={[styles.sectionLabel, { marginTop: Spacing.xl }]}>
@@ -63,6 +112,17 @@ export default function ProfileScreen() {
         subtitle="Support, FAQ"
       />
 
+      <Text variant="label" color="muted" style={[styles.sectionLabel, { marginTop: Spacing.xl }]}>
+        Developer
+      </Text>
+
+      <SettingRow
+        icon={<RotateCcw size={20} color={Colors.dark.danger} strokeWidth={2} />}
+        title="Reset onboarding"
+        subtitle="Clear profile and start over"
+        onPress={handleReset}
+      />
+
       <View style={styles.footer}>
         <Text variant="caption" color="dim">
           Velo v0.1.0 · Early access
@@ -76,13 +136,15 @@ function SettingRow({
   icon,
   title,
   subtitle,
+  onPress,
 }: {
   icon: React.ReactNode;
   title: string;
   subtitle: string;
+  onPress?: () => void;
 }) {
   return (
-    <Card style={styles.row} onPress={() => {}}>
+    <Card style={styles.row} onPress={onPress}>
       <View style={styles.iconWrap}>{icon}</View>
       <View style={styles.content}>
         <Text variant="body" weight="semibold">

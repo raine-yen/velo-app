@@ -1,18 +1,36 @@
 import { View, StyleSheet } from 'react-native';
-import { Flame, Moon, Activity, TrendingUp } from 'lucide-react-native';
+import { useRouter } from 'expo-router';
+import { Flame, Moon, Activity, TrendingUp, Sun, Plus } from 'lucide-react-native';
 
 import { Screen } from '@/components/velo/Screen';
 import { Text } from '@/components/velo/Text';
 import { Card } from '@/components/velo/Card';
+import { Button } from '@/components/velo/Button';
 import { MetricRing } from '@/components/velo/MetricRing';
 import { Colors, Spacing } from '@/constants/theme';
+import { useUserStore } from '@/stores/userStore';
+import { useNutritionStore } from '@/stores/nutritionStore';
+import { useWorkoutStore } from '@/stores/workoutStore';
+import { useWellnessStore } from '@/stores/wellnessStore';
+import { SPORT_LABEL, WORKOUT_LABEL } from '@/lib/constants';
 
 export default function HomeScreen() {
+  const router = useRouter();
+  const profile = useUserStore((s) => s.profile);
+  const todayTotals = useNutritionStore((s) => s.todayTotals());
+  const todayWorkouts = useWorkoutStore((s) => s.todayWorkouts());
+  const checkIn = useWellnessStore((s) => s.todayCheckIn());
+  const readiness = useWellnessStore((s) => s.readinessScore());
+
   const today = new Date().toLocaleDateString('en-US', {
     weekday: 'long',
     month: 'long',
     day: 'numeric',
   });
+
+  const greeting = getGreeting();
+  const readinessMsg = getReadinessMessage(readiness, !!checkIn);
+  const todayWorkoutMin = todayWorkouts.reduce((acc, w) => acc + w.durationMin, 0);
 
   return (
     <Screen>
@@ -21,10 +39,17 @@ export default function HomeScreen() {
           {today}
         </Text>
         <Text variant="display" weight="bold" style={{ marginTop: Spacing.xs }}>
-          Good morning,{'\n'}
-          <Text variant="display" color="muted">
-            athlete.
-          </Text>
+          {greeting}
+          {profile.sport ? (
+            <>
+              ,{'\n'}
+              <Text variant="display" color="muted">
+                {SPORT_LABEL[profile.sport].toLowerCase()}.
+              </Text>
+            </>
+          ) : (
+            '.'
+          )}
         </Text>
       </View>
 
@@ -35,10 +60,19 @@ export default function HomeScreen() {
               Readiness
             </Text>
             <Text variant="bodyLg" color="muted" style={{ marginTop: Spacing.sm }}>
-              Body's primed.{'\n'}Push it today.
+              {readinessMsg}
             </Text>
+            {!checkIn ? (
+              <Button
+                label="Quick check-in"
+                variant="secondary"
+                onPress={() => router.push('/wellness')}
+                icon={<Sun size={16} color={Colors.dark.text} strokeWidth={2.5} />}
+                style={{ marginTop: Spacing.md, alignSelf: 'flex-start' }}
+              />
+            ) : null}
           </View>
-          <MetricRing value={82} centerLabel="82" label="ready" />
+          <MetricRing value={readiness} centerLabel={`${readiness}`} label="ready" />
         </View>
       </Card>
 
@@ -50,13 +84,13 @@ export default function HomeScreen() {
         <StatCard
           icon={<Flame size={18} color={Colors.dark.accent} strokeWidth={2.2} />}
           label="Calories"
-          value="—"
-          subtitle="of 2,400"
+          value={todayTotals.calories > 0 ? String(todayTotals.calories) : '—'}
+          subtitle={`of ${profile.targets.calories}`}
         />
         <StatCard
           icon={<Moon size={18} color={Colors.dark.accent} strokeWidth={2.2} />}
           label="Sleep"
-          value="—"
+          value={checkIn ? `${checkIn.sleepHours}` : '—'}
           subtitle="hours"
         />
       </View>
@@ -65,14 +99,14 @@ export default function HomeScreen() {
         <StatCard
           icon={<Activity size={18} color={Colors.dark.accent} strokeWidth={2.2} />}
           label="Active"
-          value="—"
+          value={todayWorkoutMin > 0 ? String(todayWorkoutMin) : '—'}
           subtitle="minutes"
         />
         <StatCard
           icon={<TrendingUp size={18} color={Colors.dark.accent} strokeWidth={2.2} />}
-          label="Strain"
-          value="—"
-          subtitle="of 21"
+          label="Protein"
+          value={todayTotals.protein > 0 ? String(todayTotals.protein) : '—'}
+          subtitle={`of ${profile.targets.protein}g`}
         />
       </View>
 
@@ -80,17 +114,38 @@ export default function HomeScreen() {
         Up next
       </Text>
 
-      <Card>
-        <Text variant="caption" color="dim">
-          NO WORKOUT SCHEDULED
-        </Text>
-        <Text variant="title" style={{ marginTop: Spacing.sm }}>
-          Rest day
-        </Text>
-        <Text variant="body" color="muted" style={{ marginTop: Spacing.sm }}>
-          Connect Apple Health and Strava in Profile to see your training automatically.
-        </Text>
-      </Card>
+      {todayWorkouts.length > 0 ? (
+        <Card>
+          <Text variant="caption" color="accent">
+            COMPLETED TODAY
+          </Text>
+          <Text variant="title" style={{ marginTop: Spacing.sm }}>
+            {todayWorkouts[0].name}
+          </Text>
+          <Text variant="body" color="muted" style={{ marginTop: Spacing.sm }}>
+            {WORKOUT_LABEL[todayWorkouts[0].type]} · {todayWorkouts[0].durationMin} min ·
+            intensity {todayWorkouts[0].intensity}/10
+          </Text>
+        </Card>
+      ) : (
+        <Card>
+          <Text variant="caption" color="dim">
+            NO WORKOUT LOGGED
+          </Text>
+          <Text variant="title" style={{ marginTop: Spacing.sm }}>
+            Open day
+          </Text>
+          <Text variant="body" color="muted" style={{ marginTop: Spacing.sm, marginBottom: Spacing.md }}>
+            Log a workout to see it here.
+          </Text>
+          <Button
+            label="Log a workout"
+            icon={<Plus size={16} color="#0a0a0a" strokeWidth={2.5} />}
+            onPress={() => router.push('/log-workout')}
+            style={{ alignSelf: 'flex-start' }}
+          />
+        </Card>
+      )}
     </Screen>
   );
 }
@@ -124,6 +179,22 @@ function StatCard({
   );
 }
 
+function getGreeting(): string {
+  const h = new Date().getHours();
+  if (h < 12) return 'Good morning';
+  if (h < 18) return 'Good afternoon';
+  return 'Good evening';
+}
+
+function getReadinessMessage(score: number, hasCheckIn: boolean): string {
+  if (!hasCheckIn) return 'Check in to dial in your day.';
+  if (score >= 85) return "You're primed.\nPush it today.";
+  if (score >= 70) return "Solid recovery.\nGreen light.";
+  if (score >= 55) return "Moderate.\nStay sharp.";
+  if (score >= 40) return "Run light.\nFocus on quality.";
+  return "Recovery mode.\nProtect tomorrow.";
+}
+
 const styles = StyleSheet.create({
   header: {
     marginTop: Spacing.lg,
@@ -139,6 +210,7 @@ const styles = StyleSheet.create({
   },
   readinessLeft: {
     flex: 1,
+    marginRight: Spacing.md,
   },
   sectionLabel: {
     marginTop: Spacing.md,
