@@ -7,12 +7,8 @@ import { FoodItem, Meal, MealType } from '@/types';
 
 type NutritionState = {
   meals: Meal[];
-  // actions
   logMeal: (mealType: MealType, foods: { food: FoodItem; servings: number }[]) => void;
   removeMeal: (id: string) => void;
-  // selectors
-  todayMeals: () => Meal[];
-  todayTotals: () => { calories: number; protein: number; carbs: number; fat: number };
 };
 
 function totalsForFoods(foods: { food: FoodItem; servings: number }[]) {
@@ -29,7 +25,7 @@ function totalsForFoods(foods: { food: FoodItem; servings: number }[]) {
 
 export const useNutritionStore = create<NutritionState>()(
   persist(
-    (set, get) => ({
+    (set) => ({
       meals: [],
 
       logMeal: (mealType, foods) => {
@@ -48,21 +44,6 @@ export const useNutritionStore = create<NutritionState>()(
       },
 
       removeMeal: (id) => set((s) => ({ meals: s.meals.filter((m) => m.id !== id) })),
-
-      todayMeals: () => get().meals.filter((m) => isToday(m.loggedAt)),
-
-      todayTotals: () => {
-        const meals = get().meals.filter((m) => isToday(m.loggedAt));
-        return meals.reduce(
-          (acc, m) => ({
-            calories: acc.calories + m.calories,
-            protein: acc.protein + m.protein,
-            carbs: acc.carbs + m.carbs,
-            fat: acc.fat + m.fat,
-          }),
-          { calories: 0, protein: 0, carbs: 0, fat: 0 },
-        );
-      },
     }),
     {
       name: 'velo-nutrition',
@@ -70,3 +51,20 @@ export const useNutritionStore = create<NutritionState>()(
     },
   ),
 );
+
+// Pure helpers — call from useMemo with raw `meals` array.
+export function getTodayMeals(meals: Meal[]): Meal[] {
+  return meals.filter((m) => isToday(m.loggedAt));
+}
+
+export function getTodayTotals(meals: Meal[]) {
+  return getTodayMeals(meals).reduce(
+    (acc, m) => ({
+      calories: acc.calories + m.calories,
+      protein: acc.protein + m.protein,
+      carbs: acc.carbs + m.carbs,
+      fat: acc.fat + m.fat,
+    }),
+    { calories: 0, protein: 0, carbs: 0, fat: 0 },
+  );
+}

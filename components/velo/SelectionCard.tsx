@@ -1,7 +1,7 @@
 import { Pressable, StyleSheet, View } from 'react-native';
 import { Check } from 'lucide-react-native';
-
-import { Colors, Radius, Spacing } from '@/constants/theme';
+import { useColors } from '@/hooks/useColors';
+import { Radius, Spacing } from '@/constants/theme';
 import { Text } from './Text';
 
 type Props = {
@@ -12,26 +12,22 @@ type Props = {
 };
 
 export function SelectionCard({ label, description, selected, onPress }: Props) {
+  const colors = useColors();
   return (
     <Pressable
       onPress={onPress}
       style={({ pressed }) => [
         styles.card,
-        selected && styles.cardSelected,
+        { backgroundColor: colors.surface, borderColor: colors.border },
+        selected && { borderColor: colors.accent, backgroundColor: colors.surfaceElevated },
         pressed && { opacity: 0.85 },
       ]}>
       <View style={styles.content}>
-        <Text variant="body" weight="semibold">
-          {label}
-        </Text>
-        {description ? (
-          <Text variant="small" color="muted" style={{ marginTop: 2 }}>
-            {description}
-          </Text>
-        ) : null}
+        <Text variant="body" weight="semibold">{label}</Text>
+        {description ? <Text variant="small" color="muted" style={{ marginTop: 2 }}>{description}</Text> : null}
       </View>
       {selected ? (
-        <View style={styles.checkBadge}>
+        <View style={[styles.check, { backgroundColor: colors.accent }]}>
           <Check size={14} color="#0a0a0a" strokeWidth={3} />
         </View>
       ) : null}
@@ -46,23 +42,8 @@ const styles = StyleSheet.create({
     gap: Spacing.md,
     padding: Spacing.lg,
     borderRadius: Radius.lg,
-    backgroundColor: Colors.dark.surface,
     borderWidth: 1,
-    borderColor: Colors.dark.border,
   },
-  cardSelected: {
-    borderColor: Colors.dark.accent,
-    backgroundColor: Colors.dark.surfaceElevated,
-  },
-  content: {
-    flex: 1,
-  },
-  checkBadge: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    backgroundColor: Colors.dark.accent,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
+  content: { flex: 1 },
+  check: { width: 24, height: 24, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
 });

@@ -16,14 +16,11 @@ type WorkoutState = {
     notes?: string;
   }) => void;
   removeWorkout: (id: string) => void;
-  todayWorkouts: () => Workout[];
-  weekWorkouts: () => Workout[];
-  weekActiveMin: () => number;
 };
 
 export const useWorkoutStore = create<WorkoutState>()(
   persist(
-    (set, get) => ({
+    (set) => ({
       workouts: [],
 
       logWorkout: (data) => {
@@ -37,15 +34,6 @@ export const useWorkoutStore = create<WorkoutState>()(
 
       removeWorkout: (id) =>
         set((s) => ({ workouts: s.workouts.filter((w) => w.id !== id) })),
-
-      todayWorkouts: () => get().workouts.filter((w) => isToday(w.completedAt)),
-
-      weekWorkouts: () => get().workouts.filter((w) => isThisWeek(w.completedAt)),
-
-      weekActiveMin: () =>
-        get()
-          .workouts.filter((w) => isThisWeek(w.completedAt))
-          .reduce((acc, w) => acc + w.durationMin, 0),
     }),
     {
       name: 'velo-workouts',
@@ -53,3 +41,16 @@ export const useWorkoutStore = create<WorkoutState>()(
     },
   ),
 );
+
+// Pure helpers — call from useMemo with raw `workouts` array.
+export function getTodayWorkouts(workouts: Workout[]): Workout[] {
+  return workouts.filter((w) => isToday(w.completedAt));
+}
+
+export function getWeekWorkouts(workouts: Workout[]): Workout[] {
+  return workouts.filter((w) => isThisWeek(w.completedAt));
+}
+
+export function getWeekActiveMin(workouts: Workout[]): number {
+  return getWeekWorkouts(workouts).reduce((acc, w) => acc + w.durationMin, 0);
+}
