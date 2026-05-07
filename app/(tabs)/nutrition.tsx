@@ -7,10 +7,11 @@ import { Screen } from '@/components/velo/Screen';
 import { Text } from '@/components/velo/Text';
 import { Card } from '@/components/velo/Card';
 import { Button } from '@/components/velo/Button';
-import { Spacing, Radius } from '@/constants/theme';
+import { Radius, Spacing } from '@/constants/theme';
 import { useColors } from '@/hooks/useColors';
 import { useUserStore } from '@/stores/userStore';
 import { getTodayMeals, getTodayTotals, useNutritionStore } from '@/stores/nutritionStore';
+import { SwipeToDelete } from '@/components/velo/SwipeToDelete';
 import { Meal, MealType } from '@/types';
 
 export default function NutritionScreen() {
@@ -18,6 +19,7 @@ export default function NutritionScreen() {
   const colors = useColors();
   const targets = useUserStore((s) => s.profile.targets);
   const meals = useNutritionStore((s) => s.meals);
+  const removeMeal = useNutritionStore((s) => s.removeMeal);
   const totals = useMemo(() => getTodayTotals(meals), [meals]);
   const todayMeals = useMemo(() => getTodayMeals(meals), [meals]);
   const grouped = useMemo(() => groupByMealType(todayMeals), [todayMeals]);
@@ -47,10 +49,10 @@ export default function NutritionScreen() {
         onPress={() => router.push('/log-meal')} fullWidth style={{ marginTop: Spacing.md, marginBottom: Spacing.xl }} />
 
       <Text variant="label" color="muted" style={styles.sectionLabel}>Meals</Text>
-      <MealSection icon={<Coffee size={20} color={colors.textMuted} strokeWidth={2} />} title="Breakfast" meals={grouped.breakfast} colors={colors} onAdd={() => router.push('/log-meal')} />
-      <MealSection icon={<Sun size={20} color={colors.textMuted} strokeWidth={2} />} title="Lunch" meals={grouped.lunch} colors={colors} onAdd={() => router.push('/log-meal')} />
-      <MealSection icon={<Moon size={20} color={colors.textMuted} strokeWidth={2} />} title="Dinner" meals={grouped.dinner} colors={colors} onAdd={() => router.push('/log-meal')} />
-      <MealSection icon={<Apple size={20} color={colors.textMuted} strokeWidth={2} />} title="Snacks" meals={grouped.snack} colors={colors} onAdd={() => router.push('/log-meal')} />
+      <MealSection icon={<Coffee size={20} color={colors.textMuted} strokeWidth={2} />} title="Breakfast" meals={grouped.breakfast} colors={colors} onAdd={() => router.push('/log-meal')} onDelete={removeMeal} />
+      <MealSection icon={<Sun size={20} color={colors.textMuted} strokeWidth={2} />} title="Lunch" meals={grouped.lunch} colors={colors} onAdd={() => router.push('/log-meal')} onDelete={removeMeal} />
+      <MealSection icon={<Moon size={20} color={colors.textMuted} strokeWidth={2} />} title="Dinner" meals={grouped.dinner} colors={colors} onAdd={() => router.push('/log-meal')} onDelete={removeMeal} />
+      <MealSection icon={<Apple size={20} color={colors.textMuted} strokeWidth={2} />} title="Snacks" meals={grouped.snack} colors={colors} onAdd={() => router.push('/log-meal')} onDelete={removeMeal} />
     </Screen>
   );
 }
@@ -71,30 +73,38 @@ function Macro({ label, value, target, unit, colors }: { label: string; value: n
   );
 }
 
-function MealSection({ icon, title, meals, colors, onAdd }: { icon: React.ReactNode; title: string; meals: Meal[]; colors: ReturnType<typeof useColors>; onAdd: () => void }) {
+function MealSection({ icon, title, meals, colors, onAdd, onDelete }: {
+  icon: React.ReactNode; title: string; meals: Meal[];
+  colors: ReturnType<typeof useColors>; onAdd: () => void; onDelete: (id: string) => void;
+}) {
   const totalKcal = meals.reduce((acc, m) => acc + m.calories, 0);
   return (
-    <Card style={styles.mealCard} onPress={onAdd}>
-      <View style={styles.mealHeader}>
-        <View style={[styles.mealIcon, { backgroundColor: colors.surfaceElevated }]}>{icon}</View>
-        <View style={{ flex: 1 }}>
-          <Text variant="body" weight="semibold">{title}</Text>
-          <Text variant="small" color="dim">
-            {meals.length === 0 ? 'Not logged yet' : `${meals.length} item${meals.length !== 1 ? 's' : ''} · ${totalKcal} kcal`}
-          </Text>
-        </View>
-        <Plus size={18} color={colors.textDim} strokeWidth={2} />
-      </View>
-      {meals.length > 0 ? (
-        <View style={styles.foodPreview}>
-          {meals.flatMap((m) => m.foods.map(({ food, servings }, i) => (
-            <Text key={`${m.id}-${food.id}-${i}`} variant="small" color="muted" style={{ marginTop: 4 }}>
-              · {servings > 1 ? `${servings}x ` : ''}{food.name}
+    <View style={styles.mealCard}>
+      <Card onPress={onAdd}>
+        <View style={styles.mealHeader}>
+          <View style={[styles.mealIcon, { backgroundColor: colors.surfaceElevated }]}>{icon}</View>
+          <View style={{ flex: 1 }}>
+            <Text variant="body" weight="semibold">{title}</Text>
+            <Text variant="small" color="dim">
+              {meals.length === 0 ? 'Not logged yet' : `${meals.length} item${meals.length !== 1 ? 's' : ''} · ${totalKcal} kcal`}
             </Text>
-          )))}
+          </View>
+          <Plus size={18} color={colors.textDim} strokeWidth={2} />
         </View>
-      ) : null}
-    </Card>
+      </Card>
+      {meals.map((m) => (
+        <SwipeToDelete key={m.id} onDelete={() => onDelete(m.id)}>
+          <View style={[styles.loggedRow, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+            <View style={{ flex: 1 }}>
+              {m.foods.map(({ food, servings }, i) => (
+                <Text key={i} variant="small" color="muted">· {servings > 1 ? `${servings}x ` : ''}{food.name}</Text>
+              ))}
+            </View>
+            <Text variant="small" color="dim">{m.calories} kcal</Text>
+          </View>
+        </SwipeToDelete>
+      ))}
+    </View>
   );
 }
 
@@ -114,8 +124,8 @@ const styles = StyleSheet.create({
   progressTrack: { height: 4, borderRadius: 2, marginTop: Spacing.sm, overflow: 'hidden' },
   progressFill: { height: '100%' },
   sectionLabel: { marginTop: Spacing.md, marginBottom: Spacing.md },
-  mealCard: { marginBottom: Spacing.sm },
+  mealCard: { marginBottom: Spacing.sm, gap: 4 },
   mealHeader: { flexDirection: 'row', alignItems: 'center', gap: Spacing.md },
   mealIcon: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
-  foodPreview: { marginTop: Spacing.md, paddingLeft: 52 },
+  loggedRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.md, paddingHorizontal: Spacing.md, paddingVertical: Spacing.sm, borderWidth: 1, borderRadius: Radius.md },
 });

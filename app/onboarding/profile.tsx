@@ -41,8 +41,8 @@ export default function ProfileStep() {
 
   return (
     <OnboardingShell
-      step={2}
-      totalSteps={5}
+      step={3}
+      totalSteps={6}
       title="About you"
       subtitle="We use this to personalize your daily targets."
       primaryLabel="Continue"

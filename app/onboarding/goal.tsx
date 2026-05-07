@@ -14,8 +14,8 @@ export default function GoalStep() {
 
   return (
     <OnboardingShell
-      step={1}
-      totalSteps={5}
+      step={2}
+      totalSteps={6}
       title="What's your goal?"
       subtitle="This sets your daily nutrition targets and training focus."
       primaryLabel="Continue"

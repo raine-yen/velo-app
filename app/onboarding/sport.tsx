@@ -14,8 +14,8 @@ export default function SportStep() {
 
   return (
     <OnboardingShell
-      step={0}
-      totalSteps={5}
+      step={1}
+      totalSteps={6}
       title="What's your sport?"
       subtitle="We'll tailor your plan around how you train."
       primaryLabel="Continue"

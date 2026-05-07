@@ -26,7 +26,7 @@ export default function Welcome() {
         </Text>
       </View>
       <View style={styles.footer}>
-        <Button label="Get started" onPress={() => router.push('/onboarding/sport')} fullWidth />
+        <Button label="Get started" onPress={() => router.push('/onboarding/name')} fullWidth />
         <Text variant="small" color="dim" style={styles.legal}>
           By continuing you agree to Velo's terms and privacy policy.
         </Text>

@@ -13,7 +13,7 @@ export default function ConnectStep() {
   const colors = useColors();
 
   return (
-    <OnboardingShell step={3} totalSteps={5} title="Connect your data"
+    <OnboardingShell step={4} totalSteps={6} title="Connect your data"
       subtitle="Pull workouts, sleep, and activity automatically. You can do this later in Profile."
       primaryLabel="Skip for now" onPrimary={() => router.push('/onboarding/done')}>
       <View style={styles.list}>

@@ -1,8 +1,9 @@
 import { useMemo, useState } from 'react';
-import { View, StyleSheet, ScrollView, Pressable, TextInput } from 'react-native';
+import { View, StyleSheet, ScrollView, Pressable, TextInput, Image } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import { X, Plus, Minus, Search, Camera } from 'lucide-react-native';
+import { X, Plus, Minus, Search, Camera, Sparkles } from 'lucide-react-native';
+import * as ImagePicker from 'expo-image-picker';
 
 import { Button } from '@/components/velo/Button';
 import { Card } from '@/components/velo/Card';
@@ -32,9 +33,11 @@ export default function LogMealModal() {
   const router = useRouter();
   const colors = useColors();
   const logMeal = useNutritionStore((s) => s.logMeal);
+
   const [mealType, setMealType] = useState<MealType>(detectMealType());
   const [search, setSearch] = useState('');
   const [items, setItems] = useState<{ food: FoodItem; servings: number }[]>([]);
+  const [photoUri, setPhotoUri] = useState<string | null>(null);
 
   const filtered = useMemo(() => {
     if (!search) return STARTER_FOODS;
@@ -52,6 +55,19 @@ export default function LogMealModal() {
     { calories: 0, protein: 0, carbs: 0, fat: 0 },
   );
 
+  const openCamera = async () => {
+    const { status } = await ImagePicker.requestCameraPermissionsAsync();
+    if (status !== 'granted') return;
+    const result = await ImagePicker.launchCameraAsync({
+      mediaTypes: ['images'],
+      quality: 0.7,
+      allowsEditing: false,
+    });
+    if (!result.canceled && result.assets[0]) {
+      setPhotoUri(result.assets[0].uri);
+    }
+  };
+
   const addFood = (food: FoodItem) => {
     const existing = items.find((i) => i.food.id === food.id);
     if (existing) {
@@ -62,10 +78,10 @@ export default function LogMealModal() {
   };
 
   const decFood = (id: string) =>
-    setItems((curr) => curr.map((i) => (i.food.id === id ? { ...i, servings: i.servings - 1 } : i)).filter((i) => i.servings > 0));
+    setItems((c) => c.map((i) => (i.food.id === id ? { ...i, servings: i.servings - 1 } : i)).filter((i) => i.servings > 0));
 
   const incFood = (id: string) =>
-    setItems((curr) => curr.map((i) => (i.food.id === id ? { ...i, servings: i.servings + 1 } : i)));
+    setItems((c) => c.map((i) => (i.food.id === id ? { ...i, servings: i.servings + 1 } : i)));
 
   const save = () => {
     if (items.length === 0) return;
@@ -84,11 +100,32 @@ export default function LogMealModal() {
       </View>
 
       <ScrollView style={styles.body} contentContainerStyle={styles.bodyContent} keyboardShouldPersistTaps="handled">
-        <View style={styles.cameraHint}>
-          <Camera size={16} color={colors.textDim} strokeWidth={2} />
-          <Text variant="small" color="dim">Photo logging coming soon</Text>
-        </View>
 
+        {/* Photo area */}
+        {photoUri ? (
+          <View style={styles.photoWrap}>
+            <Image source={{ uri: photoUri }} style={styles.photo} resizeMode="cover" />
+            <View style={[styles.aiPill, { backgroundColor: colors.accent }]}>
+              <Sparkles size={13} color="#0a0a0a" strokeWidth={2.5} />
+              <Text variant="caption" weight="semibold" style={{ color: '#0a0a0a' }}>
+                AI logging coming soon — add foods below
+              </Text>
+            </View>
+            <Pressable style={styles.retake} onPress={openCamera} hitSlop={8}>
+              <Text variant="small" color="muted">Retake</Text>
+            </Pressable>
+          </View>
+        ) : (
+          <Pressable
+            style={[styles.cameraBtn, { backgroundColor: colors.surface, borderColor: colors.border }]}
+            onPress={openCamera}>
+            <Camera size={28} color={colors.accent} strokeWidth={2} />
+            <Text variant="body" weight="semibold" style={{ marginTop: Spacing.sm }}>Snap your meal</Text>
+            <Text variant="small" color="muted">Opens camera · log foods below</Text>
+          </Pressable>
+        )}
+
+        {/* Meal type */}
         <Text variant="label" color="muted" style={styles.section}>Meal type</Text>
         <View style={styles.chipRow}>
           {MEAL_TYPES.map((m) => (
@@ -102,6 +139,7 @@ export default function LogMealModal() {
           ))}
         </View>
 
+        {/* Selected foods */}
         {items.length > 0 ? (
           <>
             <Text variant="label" color="muted" style={styles.section}>Selected</Text>
@@ -129,6 +167,7 @@ export default function LogMealModal() {
           </>
         ) : null}
 
+        {/* Search */}
         <Text variant="label" color="muted" style={styles.section}>Add food</Text>
         <View style={[styles.searchWrap, { backgroundColor: colors.surface, borderColor: colors.border }]}>
           <Search size={16} color={colors.textDim} strokeWidth={2} />
@@ -156,13 +195,14 @@ export default function LogMealModal() {
         </View>
       </ScrollView>
 
+      {/* Footer */}
       <View style={[styles.footer, { borderTopColor: colors.borderMuted }]}>
         {items.length > 0 ? (
           <View style={styles.totals}>
-            {[['kcal', totals.calories], ['P', totals.protein], ['C', totals.carbs], ['F', totals.fat]].map(([label, val]) => (
-              <View key={label as string} style={{ alignItems: 'center', flex: 1 }}>
-                <Text variant="body" weight="semibold">{Math.round(val as number)}</Text>
-                <Text variant="caption" color="muted">{label as string}</Text>
+            {([['kcal', totals.calories], ['P', totals.protein], ['C', totals.carbs], ['F', totals.fat]] as [string, number][]).map(([label, val]) => (
+              <View key={label} style={{ alignItems: 'center', flex: 1 }}>
+                <Text variant="body" weight="semibold">{Math.round(val)}</Text>
+                <Text variant="caption" color="muted">{label}</Text>
               </View>
             ))}
           </View>
@@ -179,7 +219,11 @@ const styles = StyleSheet.create({
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: Spacing.lg, paddingVertical: Spacing.md },
   body: { flex: 1 },
   bodyContent: { paddingHorizontal: Spacing.lg, paddingBottom: Spacing.xl },
-  cameraHint: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, paddingVertical: Spacing.sm, marginBottom: Spacing.md },
+  cameraBtn: { borderWidth: 1, borderRadius: Radius.lg, borderStyle: 'dashed', padding: Spacing.xl, alignItems: 'center', marginBottom: Spacing.lg },
+  photoWrap: { borderRadius: Radius.lg, overflow: 'hidden', marginBottom: Spacing.lg, position: 'relative' },
+  photo: { width: '100%', height: 200 },
+  aiPill: { flexDirection: 'row', alignItems: 'center', gap: Spacing.xs, position: 'absolute', bottom: Spacing.md, left: Spacing.md, paddingHorizontal: Spacing.sm, paddingVertical: 5, borderRadius: Radius.pill },
+  retake: { position: 'absolute', top: Spacing.md, right: Spacing.md, paddingHorizontal: Spacing.sm, paddingVertical: 4, backgroundColor: 'rgba(0,0,0,0.5)', borderRadius: Radius.pill },
   section: { marginTop: Spacing.lg, marginBottom: Spacing.md },
   chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.sm },
   chip: { paddingHorizontal: Spacing.md, paddingVertical: Spacing.sm, borderRadius: Radius.pill, borderWidth: 1 },

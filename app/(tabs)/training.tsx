@@ -10,6 +10,7 @@ import { Button } from '@/components/velo/Button';
 import { Spacing } from '@/constants/theme';
 import { useColors } from '@/hooks/useColors';
 import { getWeekActiveMin, useWorkoutStore } from '@/stores/workoutStore';
+import { SwipeToDelete } from '@/components/velo/SwipeToDelete';
 import { WORKOUT_LABEL } from '@/lib/constants';
 import { Workout } from '@/types';
 import { isToday, isThisWeek } from '@/lib/date';
@@ -20,6 +21,7 @@ export default function TrainingScreen() {
   const router = useRouter();
   const colors = useColors();
   const workouts = useWorkoutStore((s) => s.workouts);
+  const removeWorkout = useWorkoutStore((s) => s.removeWorkout);
 
   const todayIdx = (() => { const d = new Date().getDay(); return d === 0 ? 6 : d - 1; })();
   const weekActiveMin = useMemo(() => getWeekActiveMin(workouts), [workouts]);
@@ -58,7 +60,11 @@ export default function TrainingScreen() {
       <Text variant="label" color="muted" style={styles.sectionLabel}>Today</Text>
       {todaysWorkouts.length > 0 ? (
         <View style={styles.list}>
-          {todaysWorkouts.map((w) => <WorkoutRow key={w.id} workout={w} colors={colors} />)}
+          {todaysWorkouts.map((w) => (
+            <SwipeToDelete key={w.id} onDelete={() => removeWorkout(w.id)}>
+              <WorkoutRow workout={w} colors={colors} />
+            </SwipeToDelete>
+          ))}
         </View>
       ) : (
         <Card>
@@ -72,7 +78,11 @@ export default function TrainingScreen() {
         <>
           <Text variant="label" color="muted" style={[styles.sectionLabel, { marginTop: Spacing.xl }]}>Recent</Text>
           <View style={styles.list}>
-            {recent.filter((w) => !isToday(w.completedAt)).map((w) => <WorkoutRow key={w.id} workout={w} showDay colors={colors} />)}
+            {recent.filter((w) => !isToday(w.completedAt)).map((w) => (
+              <SwipeToDelete key={w.id} onDelete={() => removeWorkout(w.id)}>
+                <WorkoutRow workout={w} showDay colors={colors} />
+              </SwipeToDelete>
+            ))}
           </View>
         </>
       ) : null}
