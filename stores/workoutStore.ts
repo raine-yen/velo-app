@@ -3,6 +3,8 @@ import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 
 import { isThisWeek, isToday, uid } from '@/lib/date';
+import { deleteWorkoutRemote, pushWorkout } from '@/lib/sync';
+import { supabase } from '@/lib/supabase';
 import { Workout, WorkoutType } from '@/types';
 
 type WorkoutState = {
@@ -16,6 +18,7 @@ type WorkoutState = {
     notes?: string;
   }) => void;
   removeWorkout: (id: string) => void;
+  setWorkouts: (workouts: Workout[]) => void;
 };
 
 export const useWorkoutStore = create<WorkoutState>()(
@@ -24,16 +27,19 @@ export const useWorkoutStore = create<WorkoutState>()(
       workouts: [],
 
       logWorkout: (data) => {
-        const workout: Workout = {
-          id: uid(),
-          ...data,
-          completedAt: new Date().toISOString(),
-        };
+        const workout: Workout = { id: uid(), ...data, completedAt: new Date().toISOString() };
         set((s) => ({ workouts: [workout, ...s.workouts] }));
+        supabase.auth.getSession().then(({ data: d }) => {
+          if (d.session?.user) pushWorkout(d.session.user.id, workout);
+        });
       },
 
-      removeWorkout: (id) =>
-        set((s) => ({ workouts: s.workouts.filter((w) => w.id !== id) })),
+      removeWorkout: (id) => {
+        set((s) => ({ workouts: s.workouts.filter((w) => w.id !== id) }));
+        deleteWorkoutRemote(id);
+      },
+
+      setWorkouts: (workouts) => set({ workouts }),
     }),
     {
       name: 'velo-workouts',

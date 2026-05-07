@@ -3,12 +3,15 @@ import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 
 import { isToday, uid } from '@/lib/date';
+import { deleteMealRemote, pushMeal } from '@/lib/sync';
+import { supabase } from '@/lib/supabase';
 import { FoodItem, Meal, MealType } from '@/types';
 
 type NutritionState = {
   meals: Meal[];
   logMeal: (mealType: MealType, foods: { food: FoodItem; servings: number }[]) => void;
   removeMeal: (id: string) => void;
+  setMeals: (meals: Meal[]) => void;
 };
 
 function totalsForFoods(foods: { food: FoodItem; servings: number }[]) {
@@ -41,9 +44,17 @@ export const useNutritionStore = create<NutritionState>()(
           fat: Math.round(totals.fat),
         };
         set((s) => ({ meals: [meal, ...s.meals] }));
+        supabase.auth.getSession().then(({ data }) => {
+          if (data.session?.user) pushMeal(data.session.user.id, meal);
+        });
       },
 
-      removeMeal: (id) => set((s) => ({ meals: s.meals.filter((m) => m.id !== id) })),
+      removeMeal: (id) => {
+        set((s) => ({ meals: s.meals.filter((m) => m.id !== id) }));
+        deleteMealRemote(id);
+      },
+
+      setMeals: (meals) => set({ meals }),
     }),
     {
       name: 'velo-nutrition',

@@ -1,6 +1,6 @@
 import { Alert, View, StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';
-import { ChevronRight, Heart, Watch, Users, Bell, Shield, HelpCircle, Sun, RotateCcw, Moon } from 'lucide-react-native';
+import { ChevronRight, Heart, Watch, Users, Bell, Shield, HelpCircle, Sun, RotateCcw, Moon, LogOut } from 'lucide-react-native';
 
 import { Screen } from '@/components/velo/Screen';
 import { Text } from '@/components/velo/Text';
@@ -9,6 +9,7 @@ import { Spacing } from '@/constants/theme';
 import { useColors } from '@/hooks/useColors';
 import { useThemeStore } from '@/stores/themeStore';
 import { useUserStore } from '@/stores/userStore';
+import { useAuthStore } from '@/stores/authStore';
 import { SPORT_LABEL } from '@/lib/constants';
 
 export default function ProfileScreen() {
@@ -18,6 +19,8 @@ export default function ProfileScreen() {
   const resetForDev = useUserStore((s) => s.resetForDev);
   const isDark = useThemeStore((s) => s.isDark);
   const toggle = useThemeStore((s) => s.toggle);
+  const signOut = useAuthStore((s) => s.signOut);
+  const userEmail = useAuthStore((s) => s.user?.email ?? '');
 
   const initial = profile.name?.[0]?.toUpperCase() ?? 'V';
   const sportLabel = profile.sport ? SPORT_LABEL[profile.sport] : 'Athlete';
@@ -39,6 +42,7 @@ export default function ProfileScreen() {
           {profile.name || sportLabel}
         </Text>
         <Text variant="body" color="muted">{sportLabel} · {profile.targets.calories} kcal/day</Text>
+        {userEmail ? <Text variant="small" color="dim" style={{ marginTop: 2 }}>{userEmail}</Text> : null}
       </View>
 
       <Text variant="label" color="muted" style={styles.sectionLabel}>Today</Text>
@@ -69,6 +73,11 @@ export default function ProfileScreen() {
       <SettingRow icon={<Bell size={20} color={colors.textMuted} strokeWidth={2} />} title="Notifications" subtitle="Reminders, summaries" colors={colors} />
       <SettingRow icon={<Shield size={20} color={colors.textMuted} strokeWidth={2} />} title="Privacy" subtitle="Data & permissions" colors={colors} />
       <SettingRow icon={<HelpCircle size={20} color={colors.textMuted} strokeWidth={2} />} title="Help" subtitle="Support, FAQ" colors={colors} />
+
+      <Text variant="label" color="muted" style={[styles.sectionLabel, { marginTop: Spacing.xl }]}>Account</Text>
+      <SettingRow icon={<LogOut size={20} color={colors.danger} strokeWidth={2} />}
+        title="Sign out" subtitle={userEmail} colors={colors}
+        onPress={() => Alert.alert('Sign out?', '', [{ text: 'Cancel', style: 'cancel' }, { text: 'Sign out', style: 'destructive', onPress: signOut }])} />
 
       <Text variant="label" color="muted" style={[styles.sectionLabel, { marginTop: Spacing.xl }]}>Developer</Text>
       <SettingRow icon={<RotateCcw size={20} color={colors.danger} strokeWidth={2} />}

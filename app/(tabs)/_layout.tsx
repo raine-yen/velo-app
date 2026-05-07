@@ -3,9 +3,11 @@ import { Platform } from 'react-native';
 import { Home, Apple, Dumbbell, User } from 'lucide-react-native';
 import { HapticTab } from '@/components/haptic-tab';
 import { useColors } from '@/hooks/useColors';
+import { useSync } from '@/hooks/useSync';
 
 export default function TabLayout() {
   const colors = useColors();
+  useSync();
   return (
     <Tabs
       screenOptions={{
