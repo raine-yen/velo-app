@@ -58,6 +58,7 @@ export default function ProfileStep() {
                 label={g === 'male' ? 'Male' : g === 'female' ? 'Female' : 'Other'}
                 selected={gender === g}
                 onPress={() => setGender(g)}
+                compact
               />
             </View>
           ))}

@@ -9,7 +9,13 @@
     "userInterfaceStyle": "dark",
     "newArchEnabled": true,
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "infoPlist": {
+        "NSHealthShareUsageDescription": "Velo reads your workouts, heart rate, HRV, sleep, steps, and body data to power your training dashboard.",
+        "NSHealthUpdateUsageDescription": "Velo does not write to Apple Health.",
+        "ITSAppUsesNonExemptEncryption": false
+      },
+      "bundleIdentifier": "com.raine.ye.veloapp"
     },
     "android": {
       "adaptiveIcon": {
@@ -35,11 +41,26 @@
           "resizeMode": "contain",
           "backgroundColor": "#0a0a0a"
         }
+      ],
+      "expo-web-browser",
+      [
+        "react-native-health",
+        {
+          "healthSharePermission": "Velo reads workouts and health data to track your training.",
+          "healthUpdatePermission": "Velo does not write to Apple Health."
+        }
       ]
     ],
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
-    }
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "4386767a-00d3-4ff4-a9ea-40f62a65cc62"
+      }
+    },
+    "owner": "raine.ye"
   }
 }

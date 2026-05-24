@@ -1,7 +1,7 @@
-import { useMemo, useState } from 'react';
-import { View, StyleSheet, ScrollView, Pressable, TextInput, Image } from 'react-native';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { ActivityIndicator, View, StyleSheet, ScrollView, Pressable, TextInput, Image } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import { X, Plus, Minus, Search, Camera, Sparkles } from 'lucide-react-native';
 import * as ImagePicker from 'expo-image-picker';
 
@@ -11,6 +11,8 @@ import { Text } from '@/components/velo/Text';
 import { Radius, Spacing } from '@/constants/theme';
 import { useColors } from '@/hooks/useColors';
 import { STARTER_FOODS } from '@/lib/constants';
+import { searchFoods } from '@/lib/foodSearch';
+import { analyzeMealPhoto } from '@/lib/aiMealAnalysis';
 import { useNutritionStore } from '@/stores/nutritionStore';
 import { FoodItem, MealType } from '@/types';
 
@@ -32,17 +34,33 @@ function detectMealType(): MealType {
 export default function LogMealModal() {
   const router = useRouter();
   const colors = useColors();
+  const { id } = useLocalSearchParams<{ id?: string }>();
   const logMeal = useNutritionStore((s) => s.logMeal);
+  const editMeal = useNutritionStore((s) => s.editMeal);
+  const meals = useNutritionStore((s) => s.meals);
+  const existing = useMemo(() => id ? meals.find((m) => m.id === id) : null, [id]);
 
-  const [mealType, setMealType] = useState<MealType>(detectMealType());
+  const [mealType, setMealType] = useState<MealType>(existing?.mealType ?? detectMealType());
   const [search, setSearch] = useState('');
-  const [items, setItems] = useState<{ food: FoodItem; servings: number }[]>([]);
+  const [items, setItems] = useState<{ food: FoodItem; servings: number }[]>(existing?.foods ?? []);
   const [photoUri, setPhotoUri] = useState<string | null>(null);
+  const [analyzing, setAnalyzing] = useState(false);
+  const [aiError, setAiError] = useState('');
+  const [results, setResults] = useState<FoodItem[]>(STARTER_FOODS);
+  const [searching, setSearching] = useState(false);
+  const debounce = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const filtered = useMemo(() => {
-    if (!search) return STARTER_FOODS;
-    const q = search.toLowerCase();
-    return STARTER_FOODS.filter((f) => f.name.toLowerCase().includes(q));
+  useEffect(() => {
+    if (debounce.current) clearTimeout(debounce.current);
+    if (!search.trim()) { setResults(STARTER_FOODS); setSearching(false); return; }
+    if (search.trim().length < 2) return;
+    setSearching(true);
+    debounce.current = setTimeout(async () => {
+      const found = await searchFoods(search.trim());
+      setResults(found.length ? found : STARTER_FOODS.filter((f) => f.name.toLowerCase().includes(search.toLowerCase())));
+      setSearching(false);
+    }, 500);
+    return () => { if (debounce.current) clearTimeout(debounce.current); };
   }, [search]);
 
   const totals = items.reduce(
@@ -62,9 +80,29 @@ export default function LogMealModal() {
       mediaTypes: ['images'],
       quality: 0.7,
       allowsEditing: false,
+      base64: true,
     });
     if (!result.canceled && result.assets[0]) {
-      setPhotoUri(result.assets[0].uri);
+      const asset = result.assets[0];
+      setPhotoUri(asset.uri);
+      if (asset.base64) {
+        setAnalyzing(true);
+        setAiError('');
+        try {
+          const analyzed = await analyzeMealPhoto(asset.base64);
+          analyzed.forEach(({ food, servings }) => {
+            setItems((prev) => {
+              const existing = prev.find((i) => i.food.id === food.id);
+              if (existing) return prev.map((i) => i.food.id === food.id ? { ...i, servings: i.servings + servings } : i);
+              return [...prev, { food, servings }];
+            });
+          });
+        } catch (e: any) {
+          setAiError(e?.message ?? 'Could not analyze photo — add foods manually below.');
+        } finally {
+          setAnalyzing(false);
+        }
+      }
     }
   };
 
@@ -85,7 +123,8 @@ export default function LogMealModal() {
 
   const save = () => {
     if (items.length === 0) return;
-    logMeal(mealType, items);
+    if (existing) editMeal(existing.id, mealType, items);
+    else logMeal(mealType, items);
     router.back();
   };
 
@@ -95,7 +134,7 @@ export default function LogMealModal() {
         <Pressable hitSlop={12} onPress={() => router.back()}>
           <X size={24} color={colors.text} strokeWidth={2} />
         </Pressable>
-        <Text variant="title" weight="semibold">Log meal</Text>
+        <Text variant="title" weight="semibold">{existing ? 'Edit meal' : 'Log meal'}</Text>
         <View style={{ width: 24 }} />
       </View>
 
@@ -105,15 +144,19 @@ export default function LogMealModal() {
         {photoUri ? (
           <View style={styles.photoWrap}>
             <Image source={{ uri: photoUri }} style={styles.photo} resizeMode="cover" />
-            <View style={[styles.aiPill, { backgroundColor: colors.accent }]}>
-              <Sparkles size={13} color="#0a0a0a" strokeWidth={2.5} />
-              <Text variant="caption" weight="semibold" style={{ color: '#0a0a0a' }}>
-                AI logging coming soon — add foods below
+            <View style={[styles.aiPill, { backgroundColor: analyzing ? colors.surfaceElevated : colors.accent }]}>
+              {analyzing
+                ? <ActivityIndicator size="small" color={colors.accent} />
+                : <Sparkles size={13} color="#0a0a0a" strokeWidth={2.5} />}
+              <Text variant="caption" weight="semibold" style={{ color: analyzing ? colors.text : '#0a0a0a' }}>
+                {analyzing ? 'Analyzing meal...' : 'Foods added below'}
               </Text>
             </View>
-            <Pressable style={styles.retake} onPress={openCamera} hitSlop={8}>
-              <Text variant="small" color="muted">Retake</Text>
-            </Pressable>
+            {!analyzing && (
+              <Pressable style={styles.retake} onPress={openCamera} hitSlop={8}>
+                <Text variant="small" color="muted">Retake</Text>
+              </Pressable>
+            )}
           </View>
         ) : (
           <Pressable
@@ -124,6 +167,8 @@ export default function LogMealModal() {
             <Text variant="small" color="muted">Opens camera · log foods below</Text>
           </Pressable>
         )}
+
+        {aiError ? <Text variant="small" color="danger" style={{ marginBottom: Spacing.md }}>{aiError}</Text> : null}
 
         {/* Meal type */}
         <Text variant="label" color="muted" style={styles.section}>Meal type</Text>
@@ -171,12 +216,13 @@ export default function LogMealModal() {
         <Text variant="label" color="muted" style={styles.section}>Add food</Text>
         <View style={[styles.searchWrap, { backgroundColor: colors.surface, borderColor: colors.border }]}>
           <Search size={16} color={colors.textDim} strokeWidth={2} />
-          <TextInput style={[styles.searchInput, { color: colors.text }]} placeholder="Search foods"
+          <TextInput style={[styles.searchInput, { color: colors.text }]} placeholder="Search millions of foods"
             placeholderTextColor={colors.textDim} value={search} onChangeText={setSearch} autoCorrect={false} />
+          {searching ? <ActivityIndicator size="small" color={colors.accent} /> : null}
         </View>
 
         <View style={styles.list}>
-          {filtered.map((food) => (
+          {results.map((food) => (
             <Pressable key={food.id} onPress={() => addFood(food)}
               style={({ pressed }) => [styles.foodRow, { backgroundColor: colors.surface, borderColor: colors.border },
                 pressed && { backgroundColor: colors.surfaceElevated }]}>
@@ -189,7 +235,7 @@ export default function LogMealModal() {
               </View>
             </Pressable>
           ))}
-          {filtered.length === 0 ? (
+          {!searching && results.length === 0 ? (
             <Text variant="body" color="dim" style={{ textAlign: 'center', padding: Spacing.lg }}>No matches.</Text>
           ) : null}
         </View>
@@ -207,7 +253,7 @@ export default function LogMealModal() {
             ))}
           </View>
         ) : null}
-        <Button label={items.length === 0 ? 'Pick at least one food' : 'Save meal'} onPress={save} fullWidth
+        <Button label={items.length === 0 ? 'Pick at least one food' : existing ? 'Save changes' : 'Save meal'} onPress={save} fullWidth
           style={items.length === 0 ? { opacity: 0.4 } : undefined} />
       </View>
     </SafeAreaView>

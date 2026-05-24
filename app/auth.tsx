@@ -1,17 +1,29 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { View, StyleSheet, TextInput, KeyboardAvoidingView, Platform, Pressable } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useRouter } from 'expo-router';
 
 import { Button } from '@/components/velo/Button';
 import { Text } from '@/components/velo/Text';
 import { Radius, Spacing } from '@/constants/theme';
 import { useColors } from '@/hooks/useColors';
 import { useAuthStore } from '@/stores/authStore';
+import { useUserStore } from '@/stores/userStore';
 
 export default function AuthScreen() {
+  const router = useRouter();
   const colors = useColors();
   const signIn = useAuthStore((s) => s.signIn);
   const signUp = useAuthStore((s) => s.signUp);
+  const signInWithGoogle = useAuthStore((s) => s.signInWithGoogle);
+  const session = useAuthStore((s) => s.session);
+  const onboardedAt = useUserStore((s) => s.profile.onboardedAt);
+  const hydrated = useUserStore((s) => s._hydrated);
+
+  useEffect(() => {
+    if (!session || !hydrated) return;
+    router.replace(onboardedAt ? '/(tabs)' : '/onboarding/welcome');
+  }, [session, hydrated, onboardedAt]);
 
   const [isSignUp, setIsSignUp] = useState(false);
   const [email, setEmail] = useState('');
@@ -25,17 +37,20 @@ export default function AuthScreen() {
     setLoading(true);
     setError('');
     setSuccess('');
-
     const err = isSignUp
       ? await signUp(email.trim(), password)
       : await signIn(email.trim(), password);
-
     setLoading(false);
-    if (err) {
-      setError(err);
-    } else if (isSignUp) {
-      setSuccess('Check your email to confirm your account.');
-    }
+    if (err) setError(err);
+    else if (isSignUp) setSuccess('Check your email to confirm your account.');
+  };
+
+  const handleGoogle = async () => {
+    setLoading(true);
+    setError('');
+    const err = await signInWithGoogle();
+    setLoading(false);
+    if (err) setError(err);
   };
 
   return (
@@ -52,6 +67,31 @@ export default function AuthScreen() {
         </View>
 
         <View style={styles.form}>
+          {/* Google sign-in */}
+          <Pressable
+            onPress={handleGoogle}
+            disabled={loading}
+            style={({ pressed }) => [
+              styles.googleBtn,
+              { backgroundColor: '#fff' },
+              (pressed || loading) && { opacity: 0.85 },
+            ]}>
+            <View style={styles.googleIcon}>
+              <Text style={{ fontSize: 16, fontWeight: '700', color: '#4285F4' }}>G</Text>
+            </View>
+            <Text style={{ fontSize: 16, fontWeight: '600', color: '#1f1f1f' }}>
+              Continue with Google
+            </Text>
+          </Pressable>
+
+          {/* Divider */}
+          <View style={styles.divider}>
+            <View style={[styles.dividerLine, { backgroundColor: colors.border }]} />
+            <Text variant="caption" color="dim">or</Text>
+            <View style={[styles.dividerLine, { backgroundColor: colors.border }]} />
+          </View>
+
+          {/* Email + password */}
           <TextInput
             style={[styles.input, { backgroundColor: colors.surface, borderColor: colors.border, color: colors.text }]}
             placeholder="Email" placeholderTextColor={colors.textDim}
@@ -91,4 +131,18 @@ const styles = StyleSheet.create({
   header: {},
   form: { gap: Spacing.md },
   input: { borderWidth: 1, borderRadius: Radius.lg, paddingHorizontal: Spacing.md, paddingVertical: 16, fontSize: 16 },
+  googleBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: Spacing.sm,
+    paddingVertical: 14,
+    borderRadius: Radius.pill,
+  },
+  googleIcon: {
+    width: 20, height: 20,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  divider: { flexDirection: 'row', alignItems: 'center', gap: Spacing.md, paddingVertical: Spacing.xs },
+  dividerLine: { flex: 1, height: 1 },
 });

@@ -1,0 +1,12 @@
+.expo
+.expo/
+.expo/**
+.expo*
+.eas-tmp/
+.eas-tmp/**
+.vscode
+.vscode/
+.vscode/**
+.eas-logs/
+.eas-inspect-ios/
+*.log

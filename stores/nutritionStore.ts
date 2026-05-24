@@ -10,6 +10,7 @@ import { FoodItem, Meal, MealType } from '@/types';
 type NutritionState = {
   meals: Meal[];
   logMeal: (mealType: MealType, foods: { food: FoodItem; servings: number }[]) => void;
+  editMeal: (id: string, mealType: MealType, foods: { food: FoodItem; servings: number }[]) => void;
   removeMeal: (id: string) => void;
   setMeals: (meals: Meal[]) => void;
 };
@@ -46,6 +47,18 @@ export const useNutritionStore = create<NutritionState>()(
         set((s) => ({ meals: [meal, ...s.meals] }));
         supabase.auth.getSession().then(({ data }) => {
           if (data.session?.user) pushMeal(data.session.user.id, meal);
+        });
+      },
+
+      editMeal: (id, mealType, foods) => {
+        const totals = totalsForFoods(foods);
+        const updated: Partial<Meal> = { mealType, foods, calories: Math.round(totals.calories), protein: Math.round(totals.protein), carbs: Math.round(totals.carbs), fat: Math.round(totals.fat) };
+        set((s) => ({ meals: s.meals.map((m) => m.id === id ? { ...m, ...updated } : m) }));
+        supabase.auth.getSession().then(({ data }) => {
+          if (data.session?.user) {
+            const meal = useNutritionStore.getState().meals.find((m) => m.id === id);
+            if (meal) pushMeal(data.session.user.id, meal);
+          }
         });
       },
 

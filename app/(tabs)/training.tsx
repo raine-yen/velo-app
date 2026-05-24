@@ -1,7 +1,9 @@
 import { useMemo } from 'react';
-import { View, StyleSheet } from 'react-native';
+import { View, StyleSheet, Pressable } from 'react-native';
 import { useRouter } from 'expo-router';
-import { Plus, Zap } from 'lucide-react-native';
+import { Plus, Zap, Pencil, Heart, Eye, EyeOff } from 'lucide-react-native';
+import { Platform } from 'react-native';
+import { useTeamStore } from '@/stores/teamStore';
 
 import { Screen } from '@/components/velo/Screen';
 import { Text } from '@/components/velo/Text';
@@ -54,8 +56,14 @@ export default function TrainingScreen() {
         ))}
       </View>
 
-      <Button label="Log a workout" icon={<Plus size={18} color="#0a0a0a" strokeWidth={2.5} />}
-        onPress={() => router.push('/log-workout')} fullWidth style={{ marginTop: Spacing.lg, marginBottom: Spacing.xl }} />
+      <View style={{ flexDirection: 'row', gap: Spacing.sm, marginTop: Spacing.lg, marginBottom: Spacing.xl }}>
+        <Button label="Log workout" icon={<Plus size={18} color="#0a0a0a" strokeWidth={2.5} />}
+          onPress={() => router.push('/log-workout')} style={{ flex: 1 }} />
+        {Platform.OS === 'ios' && (
+          <Button label="Sync" variant="secondary" icon={<Heart size={16} color="red" strokeWidth={2} />}
+            onPress={() => router.push('/health-import')} />
+        )}
+      </View>
 
       <Text variant="label" color="muted" style={styles.sectionLabel}>Today</Text>
       {todaysWorkouts.length > 0 ? (
@@ -97,19 +105,53 @@ export default function TrainingScreen() {
   );
 }
 
+function formatPace(minPerKm?: number) {
+  if (!minPerKm) return null;
+  const m = Math.floor(minPerKm);
+  const s = Math.round((minPerKm - m) * 60);
+  return `${m}:${s.toString().padStart(2, '0')}/km`;
+}
+
 function WorkoutRow({ workout, showDay = false, colors }: { workout: Workout; showDay?: boolean; colors: ReturnType<typeof useColors> }) {
+  const router = useRouter();
+  const togglePrivate = useWorkoutStore((s) => s.toggleWorkoutPrivate);
+  const inATeamAsAthlete = useTeamStore((s) => s.teams.some((t) => t.myRole === 'athlete'));
   const day = new Date(workout.completedAt).toLocaleDateString('en-US', { weekday: 'short' });
+  const hd = workout.healthData;
+  const details = [
+    showDay ? day : null,
+    WORKOUT_LABEL[workout.type],
+    `${workout.durationMin} min`,
+    workout.distanceKm ? `${workout.distanceKm.toFixed(1)} km` : null,
+    formatPace(hd?.avgPaceMinPerKm),
+    hd?.avgHeartRate ? `${hd.avgHeartRate} bpm` : null,
+    hd?.caloriesBurned ? `${hd.caloriesBurned} kcal` : null,
+    !hd ? `${workout.intensity}/10` : null,
+  ].filter(Boolean).join(' · ');
+
   return (
     <Card style={styles.workoutRow}>
-      <View style={[styles.workoutIcon, { backgroundColor: colors.surfaceElevated }]}>
-        <Zap size={20} color={colors.accent} strokeWidth={2} />
+      <View style={[styles.workoutIcon, {
+        backgroundColor: workout.source === 'apple_health' ? '#FF375F22' : workout.source === 'strava' ? '#FC4C0222' : colors.surfaceElevated
+      }]}>
+        {workout.source === 'apple_health' ? <Heart size={20} color="#FF375F" strokeWidth={2} />
+          : workout.source === 'strava' ? <Zap size={20} color="#FC4C02" strokeWidth={2} />
+          : <Zap size={20} color={colors.accent} strokeWidth={2} />}
       </View>
       <View style={{ flex: 1 }}>
         <Text variant="body" weight="semibold">{workout.name}</Text>
-        <Text variant="small" color="dim">
-          {showDay ? `${day} · ` : ''}{WORKOUT_LABEL[workout.type]} · {workout.durationMin} min · {workout.intensity}/10
-        </Text>
+        <Text variant="small" color="dim">{details}</Text>
       </View>
+      {inATeamAsAthlete && (
+        <Pressable hitSlop={8} onPress={() => togglePrivate(workout.id)} style={{ marginRight: Spacing.sm }}>
+          {workout.private
+            ? <EyeOff size={16} color={colors.textDim} strokeWidth={2} />
+            : <Eye size={16} color={colors.accent} strokeWidth={2} />}
+        </Pressable>
+      )}
+      <Pressable hitSlop={8} onPress={() => router.push(`/log-workout?id=${workout.id}`)}>
+        <Pencil size={16} color={colors.textDim} strokeWidth={2} />
+      </Pressable>
     </Card>
   );
 }

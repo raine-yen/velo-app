@@ -88,6 +88,43 @@ export type WorkoutType =
   | 'yoga'
   | 'other';
 
+export type WorkoutSource = 'manual' | 'apple_health' | 'strava';
+
+export type PlannedWorkout = {
+  id: string;
+  teamId: string;
+  athleteId: string | null; // null = whole team
+  date: string; // YYYY-MM-DD
+  type: WorkoutType;
+  title: string;
+  description: string;
+  durationMin: number;
+  intensity: number; // 1-10
+  createdBy: string; // coach userId
+};
+
+export type WeekTemplate = {
+  id: string;
+  name: string;
+  days: { dayIndex: number; type: WorkoutType; title: string; description: string; durationMin: number; intensity: number }[];
+};
+
+export type WorkoutHealthData = {
+  avgHeartRate?: number;
+  maxHeartRate?: number;
+  caloriesBurned?: number;
+  elevationGain?: number;
+  // Running / cycling
+  avgPaceMinPerKm?: number;
+  avgCadence?: number;
+  // Cycling
+  avgPowerWatts?: number;
+  // Swimming
+  strokeType?: string;
+  swolf?: number;
+  poolLengthM?: number;
+};
+
 export type Workout = {
   id: string;
   type: WorkoutType;
@@ -97,6 +134,9 @@ export type Workout = {
   intensity: number; // 1-10
   notes?: string;
   completedAt: string; // ISO
+  source?: WorkoutSource;
+  healthData?: WorkoutHealthData;
+  private?: boolean; // hide from coaches
 };
 
 export type WellnessCheckIn = {

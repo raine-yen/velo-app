@@ -1,6 +1,6 @@
 import { Alert, View, StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';
-import { ChevronRight, Heart, Watch, Users, Bell, Shield, HelpCircle, Sun, RotateCcw, Moon, LogOut } from 'lucide-react-native';
+import { ChevronRight, Heart, Watch, Users, Bell, Shield, HelpCircle, Sun, RotateCcw, Moon, LogOut, Plus, LogIn } from 'lucide-react-native';
 
 import { Screen } from '@/components/velo/Screen';
 import { Text } from '@/components/velo/Text';
@@ -10,6 +10,8 @@ import { useColors } from '@/hooks/useColors';
 import { useThemeStore } from '@/stores/themeStore';
 import { useUserStore } from '@/stores/userStore';
 import { useAuthStore } from '@/stores/authStore';
+import { useTeamStore } from '@/stores/teamStore';
+import { useStravaStore } from '@/stores/stravaStore';
 import { SPORT_LABEL } from '@/lib/constants';
 
 export default function ProfileScreen() {
@@ -21,6 +23,10 @@ export default function ProfileScreen() {
   const toggle = useThemeStore((s) => s.toggle);
   const signOut = useAuthStore((s) => s.signOut);
   const userEmail = useAuthStore((s) => s.user?.email ?? '');
+  const teams = useTeamStore((s) => s.teams);
+  const stravaTokens = useStravaStore((s) => s.tokens);
+  const stravaConnect = useStravaStore((s) => s.connect);
+  const stravaDisconnect = useStravaStore((s) => s.disconnect);
 
   const initial = profile.name?.[0]?.toUpperCase() ?? 'V';
   const sportLabel = profile.sport ? SPORT_LABEL[profile.sport] : 'Athlete';
@@ -66,8 +72,24 @@ export default function ProfileScreen() {
 
       <Text variant="label" color="muted" style={[styles.sectionLabel, { marginTop: Spacing.xl }]}>Connections</Text>
       <SettingRow icon={<Heart size={20} color={colors.accent} strokeWidth={2} />} title="Apple Health" subtitle="Coming soon" colors={colors} />
-      <SettingRow icon={<Watch size={20} color={colors.textMuted} strokeWidth={2} />} title="Strava" subtitle="Coming soon" colors={colors} />
-      <SettingRow icon={<Users size={20} color={colors.textMuted} strokeWidth={2} />} title="Join a team" subtitle="Coming soon" colors={colors} />
+      <SettingRow
+        icon={<Watch size={20} color={stravaTokens ? colors.accent : colors.textMuted} strokeWidth={2} />}
+        title="Strava"
+        subtitle={stravaTokens ? `Connected as ${stravaTokens.athleteName} · tap to disconnect` : 'Connect to auto-import workouts'}
+        colors={colors}
+        onPress={stravaTokens
+          ? () => Alert.alert('Disconnect Strava?', '', [{ text: 'Cancel', style: 'cancel' }, { text: 'Disconnect', style: 'destructive', onPress: stravaDisconnect }])
+          : stravaConnect}
+      />
+
+      <Text variant="label" color="muted" style={[styles.sectionLabel, { marginTop: Spacing.xl }]}>Teams</Text>
+      {teams.map((t) => (
+        <SettingRow key={t.id} icon={<Users size={20} color={colors.accent} strokeWidth={2} />}
+          title={t.name} subtitle={t.myRole === 'coach' ? `Coach · ${t.code}` : 'Athlete'} colors={colors}
+          onPress={() => router.push('/(tabs)/team')} />
+      ))}
+      <SettingRow icon={<Plus size={20} color={colors.textMuted} strokeWidth={2} />} title="Create a team" subtitle="You'll be the coach" colors={colors} onPress={() => router.push('/team-create')} />
+      <SettingRow icon={<LogIn size={20} color={colors.textMuted} strokeWidth={2} />} title="Join a team" subtitle="Enter a join code" colors={colors} onPress={() => router.push('/team-join')} />
 
       <Text variant="label" color="muted" style={[styles.sectionLabel, { marginTop: Spacing.xl }]}>Preferences</Text>
       <SettingRow icon={<Bell size={20} color={colors.textMuted} strokeWidth={2} />} title="Notifications" subtitle="Reminders, summaries" colors={colors} />

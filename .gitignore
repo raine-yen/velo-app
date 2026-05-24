@@ -9,6 +9,9 @@ node_modules/
 
 # Expo
 .expo/
+.eas-tmp/
+.eas-logs/
+.eas-inspect-ios/
 dist/
 web-build/
 expo-env.d.ts
@@ -26,6 +29,7 @@ expo-env.d.ts
 .metro-health-check*
 
 # debug
+*.log
 npm-debug.*
 yarn-debug.*
 yarn-error.*

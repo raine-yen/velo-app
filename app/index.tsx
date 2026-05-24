@@ -12,9 +12,10 @@ export default function Entry() {
   const loading = useAuthStore((s) => s.loading);
   const session = useAuthStore((s) => s.session);
   const onboardedAt = useUserStore((s) => s.profile.onboardedAt);
+  const hydrated = useUserStore((s) => s._hydrated);
 
   useEffect(() => {
-    if (loading) return;
+    if (loading || !hydrated) return;
     if (!session) {
       router.replace('/auth');
     } else if (!onboardedAt) {
@@ -22,7 +23,7 @@ export default function Entry() {
     } else {
       router.replace('/(tabs)');
     }
-  }, [loading, session, onboardedAt]);
+  }, [loading, hydrated, session, onboardedAt]);
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.background, alignItems: 'center', justifyContent: 'center' }}>

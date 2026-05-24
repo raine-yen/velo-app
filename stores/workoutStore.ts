@@ -9,6 +9,8 @@ import { Workout, WorkoutType } from '@/types';
 
 type WorkoutState = {
   workouts: Workout[];
+  lastHealthSync: string | null; // ISO timestamp
+  setLastHealthSync: (ts: string) => void;
   logWorkout: (data: {
     type: WorkoutType;
     name: string;
@@ -16,7 +18,12 @@ type WorkoutState = {
     distanceKm?: number;
     intensity: number;
     notes?: string;
+    source?: import('@/types').WorkoutSource;
+    healthData?: import('@/types').WorkoutHealthData;
+    appleId?: string;
   }) => void;
+  editWorkout: (id: string, data: Partial<Omit<Workout, 'id' | 'completedAt'>>) => void;
+  toggleWorkoutPrivate: (id: string) => void;
   removeWorkout: (id: string) => void;
   setWorkouts: (workouts: Workout[]) => void;
 };
@@ -25,12 +32,34 @@ export const useWorkoutStore = create<WorkoutState>()(
   persist(
     (set) => ({
       workouts: [],
+      lastHealthSync: null,
+      setLastHealthSync: (ts) => set({ lastHealthSync: ts }),
 
       logWorkout: (data) => {
-        const workout: Workout = { id: uid(), ...data, completedAt: new Date().toISOString() };
+        const workout: Workout = { id: uid(), ...data, completedAt: (data as any).completedAt ?? new Date().toISOString() };
         set((s) => ({ workouts: [workout, ...s.workouts] }));
         supabase.auth.getSession().then(({ data: d }) => {
           if (d.session?.user) pushWorkout(d.session.user.id, workout);
+        });
+      },
+
+      editWorkout: (id, data) => {
+        set((s) => ({ workouts: s.workouts.map((w) => w.id === id ? { ...w, ...data } : w) }));
+        supabase.auth.getSession().then(({ data: d }) => {
+          if (d.session?.user) {
+            const updated = useWorkoutStore.getState().workouts.find((w) => w.id === id);
+            if (updated) pushWorkout(d.session.user.id, updated);
+          }
+        });
+      },
+
+      toggleWorkoutPrivate: (id) => {
+        set((s) => ({ workouts: s.workouts.map((w) => w.id === id ? { ...w, private: !w.private } : w) }));
+        supabase.auth.getSession().then(({ data: d }) => {
+          if (d.session?.user) {
+            const updated = useWorkoutStore.getState().workouts.find((w) => w.id === id);
+            if (updated) pushWorkout(d.session.user.id, updated);
+          }
         });
       },
 

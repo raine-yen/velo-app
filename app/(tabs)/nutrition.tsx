@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
-import { View, StyleSheet } from 'react-native';
+import { Pressable, View, StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';
-import { Camera, Plus, Coffee, Sun, Moon, Apple } from 'lucide-react-native';
+import { Camera, Plus, Coffee, Sun, Moon, Apple, Pencil } from 'lucide-react-native';
 
 import { Screen } from '@/components/velo/Screen';
 import { Text } from '@/components/velo/Text';
@@ -49,10 +49,10 @@ export default function NutritionScreen() {
         onPress={() => router.push('/log-meal')} fullWidth style={{ marginTop: Spacing.md, marginBottom: Spacing.xl }} />
 
       <Text variant="label" color="muted" style={styles.sectionLabel}>Meals</Text>
-      <MealSection icon={<Coffee size={20} color={colors.textMuted} strokeWidth={2} />} title="Breakfast" meals={grouped.breakfast} colors={colors} onAdd={() => router.push('/log-meal')} onDelete={removeMeal} />
-      <MealSection icon={<Sun size={20} color={colors.textMuted} strokeWidth={2} />} title="Lunch" meals={grouped.lunch} colors={colors} onAdd={() => router.push('/log-meal')} onDelete={removeMeal} />
-      <MealSection icon={<Moon size={20} color={colors.textMuted} strokeWidth={2} />} title="Dinner" meals={grouped.dinner} colors={colors} onAdd={() => router.push('/log-meal')} onDelete={removeMeal} />
-      <MealSection icon={<Apple size={20} color={colors.textMuted} strokeWidth={2} />} title="Snacks" meals={grouped.snack} colors={colors} onAdd={() => router.push('/log-meal')} onDelete={removeMeal} />
+      <MealSection icon={<Coffee size={20} color={colors.textMuted} strokeWidth={2} />} title="Breakfast" meals={grouped.breakfast} colors={colors} onAdd={() => router.push('/log-meal')} onDelete={removeMeal} onEdit={(id) => router.push(`/log-meal?id=${id}`)} />
+      <MealSection icon={<Sun size={20} color={colors.textMuted} strokeWidth={2} />} title="Lunch" meals={grouped.lunch} colors={colors} onAdd={() => router.push('/log-meal')} onDelete={removeMeal} onEdit={(id) => router.push(`/log-meal?id=${id}`)} />
+      <MealSection icon={<Moon size={20} color={colors.textMuted} strokeWidth={2} />} title="Dinner" meals={grouped.dinner} colors={colors} onAdd={() => router.push('/log-meal')} onDelete={removeMeal} onEdit={(id) => router.push(`/log-meal?id=${id}`)} />
+      <MealSection icon={<Apple size={20} color={colors.textMuted} strokeWidth={2} />} title="Snacks" meals={grouped.snack} colors={colors} onAdd={() => router.push('/log-meal')} onDelete={removeMeal} onEdit={(id) => router.push(`/log-meal?id=${id}`)} />
     </Screen>
   );
 }
@@ -73,9 +73,9 @@ function Macro({ label, value, target, unit, colors }: { label: string; value: n
   );
 }
 
-function MealSection({ icon, title, meals, colors, onAdd, onDelete }: {
+function MealSection({ icon, title, meals, colors, onAdd, onDelete, onEdit }: {
   icon: React.ReactNode; title: string; meals: Meal[];
-  colors: ReturnType<typeof useColors>; onAdd: () => void; onDelete: (id: string) => void;
+  colors: ReturnType<typeof useColors>; onAdd: () => void; onDelete: (id: string) => void; onEdit: (id: string) => void;
 }) {
   const totalKcal = meals.reduce((acc, m) => acc + m.calories, 0);
   return (
@@ -101,6 +101,9 @@ function MealSection({ icon, title, meals, colors, onAdd, onDelete }: {
               ))}
             </View>
             <Text variant="small" color="dim">{m.calories} kcal</Text>
+            <Pressable hitSlop={8} onPress={() => onEdit(m.id)}>
+              <Pencil size={14} color={colors.textDim} strokeWidth={2} />
+            </Pressable>
           </View>
         </SwipeToDelete>
       ))}

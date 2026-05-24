@@ -7,9 +7,14 @@ import { pushCheckIn } from '@/lib/sync';
 import { supabase } from '@/lib/supabase';
 import { WellnessCheckIn } from '@/types';
 
+export type AthleteStatus = 'healthy' | 'sore' | 'injured';
+export type AthleteStatusEntry = { date: string; status: AthleteStatus; note: string };
+
 type WellnessState = {
   checkIns: Record<string, WellnessCheckIn>;
+  statusLog: Record<string, AthleteStatusEntry>; // keyed by date
   logCheckIn: (data: { sleepHours: number; energy: number; soreness: number; mood: number }) => void;
+  logStatus: (status: AthleteStatus, note: string) => void;
   setCheckIns: (checkIns: Record<string, WellnessCheckIn>) => void;
 };
 
@@ -17,6 +22,12 @@ export const useWellnessStore = create<WellnessState>()(
   persist(
     (set) => ({
       checkIns: {},
+      statusLog: {},
+
+      logStatus: (status, note) => {
+        const date = isoDate();
+        set((s) => ({ statusLog: { ...s.statusLog, [date]: { date, status, note } } }));
+      },
 
       logCheckIn: ({ sleepHours, energy, soreness, mood }) => {
         const date = isoDate();

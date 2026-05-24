@@ -7,6 +7,8 @@ import { DailyTargets, GoalId, SportId, UserProfile } from '@/types';
 
 type UserState = {
   profile: UserProfile;
+  _hydrated: boolean;
+  _setHydrated: () => void;
   // actions
   setName: (name: string) => void;
   setSport: (sport: SportId) => void;
@@ -43,6 +45,8 @@ export const useUserStore = create<UserState>()(
   persist(
     (set, get) => ({
       profile: defaultProfile,
+      _hydrated: false,
+      _setHydrated: () => set({ _hydrated: true }),
 
       setName: (name) =>
         set((s) => ({ profile: { ...s.profile, name } })),
@@ -87,6 +91,10 @@ export const useUserStore = create<UserState>()(
     {
       name: 'velo-user',
       storage: createJSONStorage(() => AsyncStorage),
+      partialize: (state) => ({ profile: state.profile }),
+      onRehydrateStorage: () => (state) => {
+        state?._setHydrated();
+      },
     },
   ),
 );

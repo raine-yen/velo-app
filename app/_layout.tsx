@@ -38,6 +38,16 @@ export default function RootLayout() {
         <Stack.Screen name="log-meal" options={{ presentation: 'modal' }} />
         <Stack.Screen name="log-workout" options={{ presentation: 'modal' }} />
         <Stack.Screen name="wellness" options={{ presentation: 'modal' }} />
+        <Stack.Screen name="health-import" options={{ presentation: 'modal' }} />
+        <Stack.Screen name="athlete-detail" options={{ presentation: 'modal' }} />
+        <Stack.Screen name="team-edit" options={{ presentation: 'modal' }} />
+        <Stack.Screen name="coach-planner" options={{ presentation: 'modal' }} />
+        <Stack.Screen name="coach-plan-ai" options={{ presentation: 'modal' }} />
+        <Stack.Screen name="coach-plan-workout" options={{ presentation: 'modal' }} />
+        <Stack.Screen name="team-create" options={{ presentation: 'modal' }} />
+        <Stack.Screen name="team-join" options={{ presentation: 'modal' }} />
+        <Stack.Screen name="consent" options={{ presentation: 'modal' }} />
+        <Stack.Screen name="request-data" options={{ presentation: 'modal' }} />
       </Stack>
       <StatusBar style={isDark ? 'light' : 'dark'} />
     </ThemeProvider>

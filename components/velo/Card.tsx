@@ -1,10 +1,10 @@
-import { View, StyleSheet, ViewStyle, Pressable } from 'react-native';
+import { View, StyleSheet, ViewStyle, Pressable, StyleProp } from 'react-native';
 import { useColors } from '@/hooks/useColors';
 import { Radius, Spacing } from '@/constants/theme';
 
 type Props = {
   children: React.ReactNode;
-  style?: ViewStyle;
+  style?: StyleProp<ViewStyle>;
   onPress?: () => void;
   variant?: 'default' | 'elevated' | 'outline';
 };

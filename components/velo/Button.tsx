@@ -1,4 +1,4 @@
-import { Pressable, StyleSheet, View, ViewStyle } from 'react-native';
+import { Pressable, StyleSheet, StyleProp, View, ViewStyle } from 'react-native';
 import { useColors } from '@/hooks/useColors';
 import { Radius, Spacing, FontSizes, FontWeights } from '@/constants/theme';
 import { Text } from './Text';
@@ -9,7 +9,7 @@ type Props = {
   variant?: 'primary' | 'secondary' | 'ghost';
   icon?: React.ReactNode;
   fullWidth?: boolean;
-  style?: ViewStyle;
+  style?: StyleProp<ViewStyle>;
 };
 
 export function Button({ onPress, label, variant = 'primary', icon, fullWidth, style }: Props) {
