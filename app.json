@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "Velo",
-    "slug": "velo-app",
+    "slug": "velo",
     "version": "0.1.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
@@ -58,7 +58,7 @@
     "extra": {
       "router": {},
       "eas": {
-        "projectId": "4386767a-00d3-4ff4-a9ea-40f62a65cc62"
+        "projectId": "f09d29ba-f052-4ed3-86d8-4206023f0739"
       }
     },
     "owner": "raine.ye"
