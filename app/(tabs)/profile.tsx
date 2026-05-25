@@ -71,7 +71,13 @@ export default function ProfileScreen() {
       />
 
       <Text variant="label" color="muted" style={[styles.sectionLabel, { marginTop: Spacing.xl }]}>Connections</Text>
-      <SettingRow icon={<Heart size={20} color={colors.accent} strokeWidth={2} />} title="Apple Health" subtitle="Coming soon" colors={colors} />
+      <SettingRow
+        icon={<Heart size={20} color={colors.accent} strokeWidth={2} />}
+        title="Apple Health"
+        subtitle="Connect workouts, sleep, and recovery"
+        colors={colors}
+        onPress={() => router.push('/health-import')}
+      />
       <SettingRow
         icon={<Watch size={20} color={stravaTokens ? colors.accent : colors.textMuted} strokeWidth={2} />}
         title="Strava"

@@ -17,23 +17,30 @@ export default function ConnectStep() {
       subtitle="Pull workouts, sleep, and activity automatically. You can do this later in Profile."
       primaryLabel="Skip for now" onPrimary={() => router.push('/onboarding/done')}>
       <View style={styles.list}>
-        <ConnectionRow icon={<Heart size={22} color={colors.accent} strokeWidth={2} />} title="Apple Health" subtitle="Sleep, steps, workouts, weight" status="Coming soon" colors={colors} />
+        <ConnectionRow
+          icon={<Heart size={22} color={colors.accent} strokeWidth={2} />}
+          title="Apple Health"
+          subtitle="Sleep, steps, workouts, weight"
+          status="Connect"
+          colors={colors}
+          onPress={() => router.push('/health-import')}
+        />
         <ConnectionRow icon={<Activity size={22} color={colors.textMuted} strokeWidth={2} />} title="Strava" subtitle="Runs, rides, swims" status="Coming soon" colors={colors} />
         <ConnectionRow icon={<Watch size={22} color={colors.textMuted} strokeWidth={2} />} title="Garmin" subtitle="Watch data and metrics" status="Coming soon" colors={colors} />
       </View>
       <Text variant="small" color="dim" style={{ marginTop: Spacing.lg, textAlign: 'center' }}>
-        We'll wire up real connections in a future update. For now, log workouts and meals manually.
+        Apple Health can be connected now on iPhone. Other sources can still be added later.
       </Text>
     </OnboardingShell>
   );
 }
 
-function ConnectionRow({ icon, title, subtitle, status, colors }: {
+function ConnectionRow({ icon, title, subtitle, status, colors, onPress }: {
   icon: React.ReactNode; title: string; subtitle: string; status: string;
-  colors: ReturnType<typeof useColors>;
+  colors: ReturnType<typeof useColors>; onPress?: () => void;
 }) {
   return (
-    <Card style={styles.row}>
+    <Card style={styles.row} onPress={onPress}>
       <View style={[styles.iconWrap, { backgroundColor: colors.surfaceElevated }]}>{icon}</View>
       <View style={{ flex: 1 }}>
         <Text variant="body" weight="semibold">{title}</Text>

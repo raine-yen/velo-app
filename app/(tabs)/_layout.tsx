@@ -6,14 +6,14 @@ import { HapticTab } from '@/components/haptic-tab';
 import { useColors } from '@/hooks/useColors';
 import { useSync } from '@/hooks/useSync';
 import { useTeamStore } from '@/stores/teamStore';
-import { useAutoHealthSync } from '@/hooks/useAutoHealthSync';
+import { useHealthKitSync } from '@/hooks/useHealthKitSync';
 import { Text } from '@/components/velo/Text';
 import { Spacing, Radius } from '@/constants/theme';
 
 export default function TabLayout() {
   const colors = useColors();
   const hasTeam = useTeamStore((s) => s.teams.length > 0);
-  const { newCount, clearNewCount } = useAutoHealthSync();
+  const { newCount, clearNewCount } = useHealthKitSync({ autoSync: true });
   useSync();
 
   useEffect(() => {
@@ -29,7 +29,7 @@ export default function TabLayout() {
           backgroundColor: colors.accent, borderRadius: Radius.pill, paddingVertical: 10, paddingHorizontal: Spacing.lg,
           flexDirection: 'row', justifyContent: 'center' }}>
           <Text variant="small" weight="semibold" style={{ color: '#0a0a0a' }}>
-            ♥ {newCount} workout{newCount !== 1 ? 's' : ''} imported from Apple Health
+            {newCount} workout{newCount !== 1 ? 's' : ''} imported from Apple Health
           </Text>
         </View>
       )}

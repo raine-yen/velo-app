@@ -61,22 +61,83 @@ export function isHealthKitAvailable(): boolean {
   return Platform.OS === 'ios' && typeof healthKit.initHealthKit === 'function';
 }
 
-export function getHealthKitAvailabilityMessage(): string | null {
-  if (Platform.OS !== 'ios') return 'Apple Health is only available on iOS.';
-  if (!NativeModules.AppleHealthKit) {
-    return 'Apple Health is not available in this build yet. Rebuild the iOS development client and reinstall it on your iPhone.';
+export type HealthKitAvailability = {
+  platform: typeof Platform.OS;
+  nativeModuleLoaded: boolean;
+  permissionApiLoaded: boolean;
+  available: boolean;
+  message: string | null;
+};
+
+export type HealthKitPermissionResult = {
+  requested: boolean;
+  granted: boolean;
+  status: 'granted' | 'unavailable' | 'error';
+  message: string | null;
+};
+
+export function getHealthKitAvailability(): HealthKitAvailability {
+  const nativeModuleLoaded = !!NativeModules.AppleHealthKit;
+  const permissionApiLoaded = typeof healthKit.initHealthKit === 'function';
+  let message: string | null = null;
+
+  if (Platform.OS !== 'ios') message = 'Apple Health is only available on iOS.';
+  else if (!nativeModuleLoaded) {
+    message = 'Apple Health is not available in this build yet. Rebuild the iOS development client and reinstall it on your iPhone.';
+  } else if (!permissionApiLoaded) {
+    message = 'Apple Health loaded without its permission API. Rebuild the iOS development client with the legacy React Native architecture.';
   }
-  if (typeof healthKit.initHealthKit !== 'function') {
-    return 'Apple Health loaded without its permission API. Rebuild the iOS development client with the legacy React Native architecture.';
-  }
-  return null;
+
+  return {
+    platform: Platform.OS,
+    nativeModuleLoaded,
+    permissionApiLoaded,
+    available: Platform.OS === 'ios' && permissionApiLoaded,
+    message,
+  };
 }
 
-export function requestHealthKitPermissions(): Promise<boolean> {
+export function getHealthKitAvailabilityMessage(): string | null {
+  return getHealthKitAvailability().message;
+}
+
+export function requestHealthKitPermissions(): Promise<HealthKitPermissionResult> {
   return new Promise((resolve) => {
-    if (!isHealthKitAvailable()) return resolve(false);
-    healthKit.initHealthKit(PERMS, (err) => resolve(!err));
+    const availability = getHealthKitAvailability();
+    if (!availability.available) {
+      resolve({
+        requested: false,
+        granted: false,
+        status: 'unavailable',
+        message: availability.message,
+      });
+      return;
+    }
+
+    healthKit.initHealthKit(PERMS, (err) => {
+      if (err) {
+        resolve({
+          requested: true,
+          granted: false,
+          status: 'error',
+          message: String(err),
+        });
+        return;
+      }
+
+      resolve({
+        requested: true,
+        granted: true,
+        status: 'granted',
+        message: null,
+      });
+    });
   });
+}
+
+export function getHealthKitSettingsGuidance(): string {
+  if (Platform.OS !== 'ios') return 'Apple Health is only available on iOS.';
+  return 'Open iPhone Settings > Health > Data Access & Devices > Velo and enable the requested read permissions. If Velo does not appear there, delete and reinstall the dev build, then tap Connect Apple Health again.';
 }
 
 export type HealthKitWorkout = Workout & { appleId: string };

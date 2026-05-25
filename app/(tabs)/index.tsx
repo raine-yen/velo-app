@@ -15,7 +15,6 @@ import { getTodayTotals, useNutritionStore } from '@/stores/nutritionStore';
 import { getTodayWorkouts, useWorkoutStore } from '@/stores/workoutStore';
 import { computeReadiness, useWellnessStore, AthleteStatus } from '@/stores/wellnessStore';
 import { useHealthStore, computeRecoveryScore, computeStressLevel } from '@/stores/healthStore';
-import { useHealthSync } from '@/hooks/useHealthSync';
 import { usePlannerStore } from '@/stores/plannerStore';
 import { useAuthStore } from '@/stores/authStore';
 import { useTeamStore } from '@/stores/teamStore';
@@ -34,9 +33,6 @@ export default function HomeScreen() {
   const plannedWorkouts = useMemo(() => getPlansForAthlete(userId), [userId]);
   const healthSnap = useHealthStore((s) => s.snapshot);
   const healthSyncing = useHealthStore((s) => s.syncing);
-
-  // Kick off auto-sync
-  useHealthSync();
 
   const todayTotals = useMemo(() => getTodayTotals(meals), [meals]);
   const todayWorkouts = useMemo(() => getTodayWorkouts(workouts), [workouts]);

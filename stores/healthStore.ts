@@ -19,13 +19,45 @@ export type DailyHealthSnapshot = {
   weightKg?: number;
 };
 
+export type HealthPermissionStatus = 'unknown' | 'unavailable' | 'ready' | 'granted' | 'error' | 'mock';
+
+export type HealthDiagnostics = {
+  nativeAvailable: boolean;
+  nativeModuleLoaded: boolean;
+  permissionApiLoaded: boolean;
+  permissionRequested: boolean;
+  permissionGrantedOrUnknown: boolean;
+  status: HealthPermissionStatus;
+  statusMessage: string | null;
+  lastError: string | null;
+  lastSyncAt: string | null;
+  lastImportCount: number;
+  mockMode: boolean;
+};
+
 type HealthState = {
   snapshot: DailyHealthSnapshot | null;
   syncing: boolean;
   lastSyncError: string | null;
+  diagnostics: HealthDiagnostics;
   setSnapshot: (s: DailyHealthSnapshot) => void;
   setSyncing: (v: boolean) => void;
   setSyncError: (e: string | null) => void;
+  setDiagnostics: (patch: Partial<HealthDiagnostics>) => void;
+};
+
+const initialDiagnostics: HealthDiagnostics = {
+  nativeAvailable: false,
+  nativeModuleLoaded: false,
+  permissionApiLoaded: false,
+  permissionRequested: false,
+  permissionGrantedOrUnknown: false,
+  status: 'unknown',
+  statusMessage: null,
+  lastError: null,
+  lastSyncAt: null,
+  lastImportCount: 0,
+  mockMode: false,
 };
 
 export const useHealthStore = create<HealthState>()(
@@ -34,9 +66,13 @@ export const useHealthStore = create<HealthState>()(
       snapshot: null,
       syncing: false,
       lastSyncError: null,
+      diagnostics: initialDiagnostics,
       setSnapshot: (snapshot) => set({ snapshot }),
       setSyncing: (syncing) => set({ syncing }),
       setSyncError: (lastSyncError) => set({ lastSyncError }),
+      setDiagnostics: (patch) => set((state) => ({
+        diagnostics: { ...state.diagnostics, ...patch },
+      })),
     }),
     { name: 'velo-health', storage: createJSONStorage(() => AsyncStorage) },
   ),

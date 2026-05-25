@@ -60,7 +60,7 @@ export default function TrainingScreen() {
         <Button label="Log workout" icon={<Plus size={18} color="#0a0a0a" strokeWidth={2.5} />}
           onPress={() => router.push('/log-workout')} style={{ flex: 1 }} />
         {Platform.OS === 'ios' && (
-          <Button label="Sync" variant="secondary" icon={<Heart size={16} color="red" strokeWidth={2} />}
+          <Button label="Health" variant="secondary" icon={<Heart size={16} color="red" strokeWidth={2} />}
             onPress={() => router.push('/health-import')} />
         )}
       </View>
