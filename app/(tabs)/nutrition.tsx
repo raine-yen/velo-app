@@ -1,134 +1,131 @@
 import { useMemo } from 'react';
-import { Pressable, View, StyleSheet } from 'react-native';
+import { View, StyleSheet, Pressable } from 'react-native';
 import { useRouter } from 'expo-router';
-import { Camera, Plus, Coffee, Sun, Moon, Apple, Pencil } from 'lucide-react-native';
+import { Camera, Plus, SlidersHorizontal, Pencil } from 'lucide-react-native';
 
 import { Screen } from '@/components/velo/Screen';
 import { Text } from '@/components/velo/Text';
 import { Card } from '@/components/velo/Card';
 import { Button } from '@/components/velo/Button';
+import { MetricBar } from '@/components/velo/MetricBar';
+import { InsightCard } from '@/components/velo/InsightCard';
 import { Radius, Spacing } from '@/constants/theme';
 import { useColors } from '@/hooks/useColors';
-import { useUserStore } from '@/stores/userStore';
+import { useVeloInsight } from '@/hooks/useVeloInsight';
+import { formatNumber } from '@/lib/format';
 import { getTodayMeals, getTodayTotals, useNutritionStore } from '@/stores/nutritionStore';
+import { NUTRITION_GOALS, useNutritionGoalStore } from '@/stores/nutritionGoalStore';
 import { SwipeToDelete } from '@/components/velo/SwipeToDelete';
-import { Meal, MealType } from '@/types';
+import { Meal, NutritionGoalId } from '@/types';
 
 export default function NutritionScreen() {
   const router = useRouter();
   const colors = useColors();
-  const targets = useUserStore((s) => s.profile.targets);
   const meals = useNutritionStore((s) => s.meals);
   const removeMeal = useNutritionStore((s) => s.removeMeal);
+  const enabled = useNutritionGoalStore((s) => s.enabled);
+  const targets = useNutritionGoalStore((s) => s.targets);
   const totals = useMemo(() => getTodayTotals(meals), [meals]);
   const todayMeals = useMemo(() => getTodayMeals(meals), [meals]);
-  const grouped = useMemo(() => groupByMealType(todayMeals), [todayMeals]);
+  const { insight, loading } = useVeloInsight('nutrition');
 
   return (
     <Screen>
       <View style={styles.header}>
         <Text variant="label" color="muted">Nutrition</Text>
-        <Text variant="display" weight="bold" style={{ marginTop: Spacing.xs }}>Today's plate</Text>
+        <Text variant="display" weight="bold" style={{ marginTop: Spacing.xs }}>Fuel today</Text>
       </View>
 
-      <Card style={styles.macrosCard}>
-        <Text variant="label" color="muted">Daily targets</Text>
-        <View style={styles.macroRow}>
-          <Macro label="Calories" value={totals.calories} target={targets.calories} unit="kcal" colors={colors} />
-          <Macro label="Protein" value={totals.protein} target={targets.protein} unit="g" colors={colors} />
+      <Card style={styles.goalsCard}>
+        <View style={styles.cardHeader}>
+          <Text variant="label" color="muted">Selected goals</Text>
+          <Pressable onPress={() => router.push('/nutrition-goals')} hitSlop={8}>
+            <SlidersHorizontal size={19} color={colors.accent} strokeWidth={2.3} />
+          </Pressable>
         </View>
-        <View style={styles.macroRow}>
-          <Macro label="Carbs" value={totals.carbs} target={targets.carbs} unit="g" colors={colors} />
-          <Macro label="Fat" value={totals.fat} target={targets.fat} unit="g" colors={colors} />
+        <View style={styles.goalStack}>
+          {enabled.map((id) => {
+            const goal = NUTRITION_GOALS.find((g) => g.id === id);
+            if (!goal) return null;
+            const value = valueForGoal(id, totals);
+            return (
+              <MetricBar
+                key={id}
+                label={goal.label}
+                value={value}
+                max={targets[id]}
+                detail={`${formatNumber(value)} / ${formatNumber(targets[id])} ${goal.unit}`}
+              />
+            );
+          })}
         </View>
       </Card>
 
-      <Button label="Snap a meal" icon={<Camera size={18} color="#0a0a0a" strokeWidth={2.5} />}
-        onPress={() => router.push('/log-meal')} fullWidth />
-      <Button label="Add manually" variant="secondary" icon={<Plus size={18} color={colors.text} strokeWidth={2.5} />}
-        onPress={() => router.push('/log-meal')} fullWidth style={{ marginTop: Spacing.md, marginBottom: Spacing.xl }} />
+      <View style={styles.actionRow}>
+        <Button label="Snap meal" icon={<Camera size={18} color="#0a0a0a" strokeWidth={2.5} />}
+          onPress={() => router.push('/log-meal')} style={{ flex: 1 }} />
+        <Button label="Add" variant="secondary" icon={<Plus size={18} color={colors.text} strokeWidth={2.5} />}
+          onPress={() => router.push('/log-meal')} style={{ flex: 1 }} />
+      </View>
 
-      <Text variant="label" color="muted" style={styles.sectionLabel}>Meals</Text>
-      <MealSection icon={<Coffee size={20} color={colors.textMuted} strokeWidth={2} />} title="Breakfast" meals={grouped.breakfast} colors={colors} onAdd={() => router.push('/log-meal')} onDelete={removeMeal} onEdit={(id) => router.push(`/log-meal?id=${id}`)} />
-      <MealSection icon={<Sun size={20} color={colors.textMuted} strokeWidth={2} />} title="Lunch" meals={grouped.lunch} colors={colors} onAdd={() => router.push('/log-meal')} onDelete={removeMeal} onEdit={(id) => router.push(`/log-meal?id=${id}`)} />
-      <MealSection icon={<Moon size={20} color={colors.textMuted} strokeWidth={2} />} title="Dinner" meals={grouped.dinner} colors={colors} onAdd={() => router.push('/log-meal')} onDelete={removeMeal} onEdit={(id) => router.push(`/log-meal?id=${id}`)} />
-      <MealSection icon={<Apple size={20} color={colors.textMuted} strokeWidth={2} />} title="Snacks" meals={grouped.snack} colors={colors} onAdd={() => router.push('/log-meal')} onDelete={removeMeal} onEdit={(id) => router.push(`/log-meal?id=${id}`)} />
+      <InsightCard insight={insight} loading={loading} title="Fuel insight" onPress={() => router.push('/ai-insight-detail?kind=nutrition')} />
+
+      <Text variant="label" color="muted" style={styles.sectionLabel}>Food log</Text>
+      {todayMeals.length ? (
+        <View style={styles.timeline}>
+          {todayMeals.map((meal) => (
+            <FoodLogRow key={meal.id} meal={meal} colors={colors} onDelete={removeMeal} onEdit={(id) => router.push(`/log-meal?id=${id}`)} />
+          ))}
+        </View>
+      ) : (
+        <Card>
+          <Text variant="body" weight="semibold">No food logged today</Text>
+          <Text variant="small" color="muted" style={{ marginTop: Spacing.xs }}>Snap a meal or add one manually when you want nutrition guidance.</Text>
+        </Card>
+      )}
     </Screen>
   );
 }
 
-function Macro({ label, value, target, unit, colors }: { label: string; value: number; target: number; unit: string; colors: ReturnType<typeof useColors> }) {
-  const pct = target > 0 ? Math.min(100, (value / target) * 100) : 0;
-  return (
-    <View style={styles.macro}>
-      <Text variant="caption" color="muted">{label}</Text>
-      <View style={styles.macroValue}>
-        <Text variant="title" weight="semibold">{value}</Text>
-        <Text variant="small" color="dim">{' / '}{target} {unit}</Text>
-      </View>
-      <View style={[styles.progressTrack, { backgroundColor: colors.border }]}>
-        <View style={[styles.progressFill, { width: `${pct}%` as any, backgroundColor: colors.accent }]} />
-      </View>
-    </View>
-  );
+function valueForGoal(id: NutritionGoalId, totals: { calories: number; protein: number; carbs: number; fat: number }) {
+  if (id === 'water' || id === 'fiber' || id === 'sodium') return 0;
+  return totals[id];
 }
 
-function MealSection({ icon, title, meals, colors, onAdd, onDelete, onEdit }: {
-  icon: React.ReactNode; title: string; meals: Meal[];
-  colors: ReturnType<typeof useColors>; onAdd: () => void; onDelete: (id: string) => void; onEdit: (id: string) => void;
+function FoodLogRow({ meal, colors, onDelete, onEdit }: {
+  meal: Meal;
+  colors: ReturnType<typeof useColors>;
+  onDelete: (id: string) => void;
+  onEdit: (id: string) => void;
 }) {
-  const totalKcal = meals.reduce((acc, m) => acc + m.calories, 0);
+  const time = new Date(meal.loggedAt).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
   return (
-    <View style={styles.mealCard}>
-      <Card onPress={onAdd}>
-        <View style={styles.mealHeader}>
-          <View style={[styles.mealIcon, { backgroundColor: colors.surfaceElevated }]}>{icon}</View>
-          <View style={{ flex: 1 }}>
-            <Text variant="body" weight="semibold">{title}</Text>
-            <Text variant="small" color="dim">
-              {meals.length === 0 ? 'Not logged yet' : `${meals.length} item${meals.length !== 1 ? 's' : ''} · ${totalKcal} kcal`}
-            </Text>
-          </View>
-          <Plus size={18} color={colors.textDim} strokeWidth={2} />
+    <SwipeToDelete onDelete={() => onDelete(meal.id)}>
+      <View style={[styles.foodRow, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+        <View style={styles.dotColumn}>
+          <View style={[styles.dot, { backgroundColor: colors.accent }]} />
         </View>
-      </Card>
-      {meals.map((m) => (
-        <SwipeToDelete key={m.id} onDelete={() => onDelete(m.id)}>
-          <View style={[styles.loggedRow, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-            <View style={{ flex: 1 }}>
-              {m.foods.map(({ food, servings }, i) => (
-                <Text key={i} variant="small" color="muted">· {servings > 1 ? `${servings}x ` : ''}{food.name}</Text>
-              ))}
-            </View>
-            <Text variant="small" color="dim">{m.calories} kcal</Text>
-            <Pressable hitSlop={8} onPress={() => onEdit(m.id)}>
-              <Pencil size={14} color={colors.textDim} strokeWidth={2} />
-            </Pressable>
-          </View>
-        </SwipeToDelete>
-      ))}
-    </View>
-  );
-}
-
-function groupByMealType(meals: Meal[]): Record<MealType, Meal[]> {
-  return meals.reduce(
-    (acc, m) => { acc[m.mealType].push(m); return acc; },
-    { breakfast: [], lunch: [], dinner: [], snack: [] } as Record<MealType, Meal[]>,
+        <View style={{ flex: 1 }}>
+          <Text variant="body" weight="semibold">{meal.foods.map(({ food }) => food.name).slice(0, 2).join(', ')}</Text>
+          <Text variant="small" color="dim">{time} - {meal.calories} kcal - {meal.protein}g protein</Text>
+        </View>
+        <Pressable hitSlop={8} onPress={() => onEdit(meal.id)}>
+          <Pencil size={15} color={colors.textDim} strokeWidth={2} />
+        </Pressable>
+      </View>
+    </SwipeToDelete>
   );
 }
 
 const styles = StyleSheet.create({
   header: { marginTop: Spacing.lg, marginBottom: Spacing.xl },
-  macrosCard: { marginBottom: Spacing.lg },
-  macroRow: { flexDirection: 'row', gap: Spacing.lg, marginTop: Spacing.md },
-  macro: { flex: 1 },
-  macroValue: { flexDirection: 'row', alignItems: 'baseline', marginTop: Spacing.xs },
-  progressTrack: { height: 4, borderRadius: 2, marginTop: Spacing.sm, overflow: 'hidden' },
-  progressFill: { height: '100%' },
-  sectionLabel: { marginTop: Spacing.md, marginBottom: Spacing.md },
-  mealCard: { marginBottom: Spacing.sm, gap: 4 },
-  mealHeader: { flexDirection: 'row', alignItems: 'center', gap: Spacing.md },
-  mealIcon: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
-  loggedRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.md, paddingHorizontal: Spacing.md, paddingVertical: Spacing.sm, borderWidth: 1, borderRadius: Radius.md },
+  goalsCard: { marginBottom: Spacing.md },
+  cardHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: Spacing.md },
+  goalStack: { gap: Spacing.md },
+  actionRow: { flexDirection: 'row', gap: Spacing.sm, marginBottom: Spacing.md },
+  sectionLabel: { marginTop: Spacing.lg, marginBottom: Spacing.md },
+  timeline: { gap: Spacing.sm },
+  foodRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.md, padding: Spacing.md, borderWidth: 1, borderRadius: Radius.md },
+  dotColumn: { width: 10, alignItems: 'center' },
+  dot: { width: 8, height: 8, borderRadius: 4 },
 });

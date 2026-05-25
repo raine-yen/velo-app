@@ -11,6 +11,8 @@ export type VeloInsight = {
   summary: string;
   action: string;
   tone: 'green' | 'yellow' | 'red';
+  drivers?: string[];
+  actions?: string[];
 };
 
 export type CoachMessage = {
@@ -27,9 +29,15 @@ const INSIGHT_SCHEMA = {
     summary: { type: 'string' },
     action: { type: 'string' },
     tone: { type: 'string', enum: ['green', 'yellow', 'red'] },
+    drivers: { type: 'array', items: { type: 'string' } },
+    actions: { type: 'array', items: { type: 'string' } },
   },
   required: ['kind', 'title', 'summary', 'action', 'tone'],
 };
+
+function withDetails(insight: VeloInsight, drivers: string[], actions: string[]): VeloInsight {
+  return { ...insight, drivers, actions };
+}
 
 const COACH_SCHEMA = {
   type: 'object',
@@ -47,53 +55,53 @@ function fallbackInsight(kind: InsightKind, context: VeloHealthContext): VeloIns
   const sleep = context.health?.sleepHours ?? context.wellness?.sleepHours;
 
   if (kind === 'sleep') {
-    return {
+    return withDetails({
       kind,
       title: sleep ? 'Sleep is your lever' : 'Sleep data needed',
       summary: sleep ? `${sleep} hours logged. Recovery will be clearer with consistent overnight HRV and RHR.` : 'Velo needs Apple Health sleep samples to analyze stages.',
       action: sleep && sleep < 7 ? "Keep intensity controlled and protect tonight's sleep window." : 'Keep wearing your device overnight.',
       tone: sleep && sleep >= 7 ? 'green' : 'yellow',
-    };
+    }, [`Sleep: ${sleep ?? 'missing'}h`, `Awake: ${context.health?.sleepAwakeMinutes ?? 0}m`], ['Wear your device overnight', 'Keep bedtime consistent']);
   }
 
   if (kind === 'training') {
-    return {
+    return withDetails({
       kind,
       title: 'Load check',
       summary: `${context.weekTraining.sessions} sessions and ${context.weekTraining.minutes} workout minutes this week.`,
       action: recovery !== null && recovery < 55 ? 'Favor easy work until recovery rebounds.' : 'A moderate session is reasonable if soreness is low.',
       tone: recovery !== null && recovery < 55 ? 'yellow' : 'green',
-    };
+    }, [`Recovery: ${recovery ?? 'building'}`, `Week load: ${context.weekTraining.minutes}m`], ['Match intensity to recovery', 'Keep hard days separated']);
   }
 
   if (kind === 'nutrition') {
     const remaining = context.profile.targets.calories - context.todayNutrition.calories;
-    return {
+    return withDetails({
       kind,
       title: 'Fuel status',
       summary: `${context.todayNutrition.calories} kcal consumed. ${context.health?.activeCalories ?? 0} active kcal burned.`,
       action: remaining > 600 ? 'Prioritize protein and carbs in your next meal.' : 'Keep the next meal simple and recovery-oriented.',
       tone: remaining > 0 ? 'yellow' : 'green',
-    };
+    }, [`Remaining: ${Math.max(0, remaining)} kcal`, `Protein: ${context.todayNutrition.protein}g`], ['Hit your selected goals', 'Fuel around training']);
   }
 
   if (kind === 'recovery') {
-    return {
+    return withDetails({
       kind,
       title: recovery !== null ? 'Recovery read' : 'Recovery baseline building',
       summary: recovery !== null ? `Recovery is ${recovery}/100 from sleep, HRV, and resting HR.` : 'Recovery needs sleep, HRV, and resting HR to stabilize.',
       action: recovery !== null && recovery >= 70 ? 'Use the green light, but avoid stacking intensity without sleep.' : 'Keep the day aerobic or technique-focused.',
       tone: recovery !== null && recovery >= 70 ? 'green' : 'yellow',
-    };
+    }, [`HRV: ${context.health?.avgHRV ?? 'missing'}`, `RHR: ${context.health?.restingHR ?? 'missing'}`], ['Protect recovery signals', 'Choose load intentionally']);
   }
 
-  return {
+  return withDetails({
     kind,
     title: "Today's guidance",
     summary: `Recovery ${recovery ?? 'needs data'}, active ${active} min, consumed ${context.todayNutrition.calories} kcal.`,
     action: recovery !== null && recovery < 55 ? 'Lower the training load and refuel well.' : 'Train with intent and keep recovery visible.',
     tone: recovery !== null && recovery < 55 ? 'yellow' : 'green',
-  };
+  }, [`Recovery: ${recovery ?? 'building'}`, `Active: ${active}m`, `Food: ${context.todayNutrition.calories} kcal`], ['Open the detail view', 'Ask Velo a follow-up']);
 }
 
 function fallbackCoach(question: string, context: VeloHealthContext): CoachMessage {

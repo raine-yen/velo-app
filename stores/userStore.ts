@@ -3,6 +3,8 @@ import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 
 import { calcDailyTargets } from '@/lib/nutrition';
+import { pushProfile } from '@/lib/sync';
+import { supabase } from '@/lib/supabase';
 import { DailyTargets, GoalId, SportId, UserProfile } from '@/types';
 
 type UserState = {
@@ -16,8 +18,9 @@ type UserState = {
   setProfile: (
     p: Partial<Pick<UserProfile, 'gender' | 'age' | 'heightCm' | 'weightKg' | 'units' | 'name'>>,
   ) => void;
+  hydrateProfile: (p: Partial<UserProfile>) => void;
   recomputeTargets: () => void;
-  finishOnboarding: () => void;
+  finishOnboarding: () => Promise<void>;
   resetForDev: () => void;
 };
 
@@ -66,6 +69,16 @@ export const useUserStore = create<UserState>()(
         get().recomputeTargets();
       },
 
+      hydrateProfile: (p) => {
+        set((s) => ({
+          profile: {
+            ...s.profile,
+            ...p,
+            targets: p.targets ?? s.profile.targets,
+          },
+        }));
+      },
+
       recomputeTargets: () => {
         const p = get().profile;
         const targets = calcDailyTargets({
@@ -79,11 +92,16 @@ export const useUserStore = create<UserState>()(
         set((s) => ({ profile: { ...s.profile, targets } }));
       },
 
-      finishOnboarding: () => {
+      finishOnboarding: async () => {
         get().recomputeTargets();
+        const onboardedAt = new Date().toISOString();
         set((s) => ({
-          profile: { ...s.profile, onboardedAt: new Date().toISOString() },
+          profile: { ...s.profile, onboardedAt },
         }));
+        const { data } = await supabase.auth.getSession();
+        if (data.session?.user) {
+          await pushProfile(data.session.user.id, get().profile);
+        }
       },
 
       resetForDev: () => set({ profile: defaultProfile }),

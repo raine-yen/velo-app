@@ -3,6 +3,8 @@ import { Session, User } from '@supabase/supabase-js';
 import * as WebBrowser from 'expo-web-browser';
 import * as Linking from 'expo-linking';
 import { supabase } from '@/lib/supabase';
+import { pullProfile } from '@/lib/sync';
+import { useUserStore } from '@/stores/userStore';
 
 WebBrowser.maybeCompleteAuthSession();
 
@@ -45,9 +47,17 @@ export const useAuthStore = create<AuthState>((set) => ({
 
   init: async () => {
     const { data } = await supabase.auth.getSession();
+    if (data.session?.user) {
+      const profile = await pullProfile(data.session.user.id);
+      if (profile) useUserStore.getState().hydrateProfile(profile);
+    }
     set({ session: data.session, user: data.session?.user ?? null, loading: false });
 
-    supabase.auth.onAuthStateChange((_event, session) => {
+    supabase.auth.onAuthStateChange(async (_event, session) => {
+      if (session?.user) {
+        const profile = await pullProfile(session.user.id);
+        if (profile) useUserStore.getState().hydrateProfile(profile);
+      }
       set({ session, user: session?.user ?? null });
     });
   },

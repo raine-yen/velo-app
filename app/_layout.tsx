@@ -44,6 +44,9 @@ export default function RootLayout() {
         <Stack.Screen name="nutrition-detail" options={{ presentation: 'modal' }} />
         <Stack.Screen name="recovery-detail" options={{ presentation: 'modal' }} />
         <Stack.Screen name="ai-coach" options={{ presentation: 'modal' }} />
+        <Stack.Screen name="ai-insight-detail" options={{ presentation: 'modal' }} />
+        <Stack.Screen name="nutrition-goals" options={{ presentation: 'modal' }} />
+        <Stack.Screen name="workout-detail" options={{ presentation: 'modal' }} />
         <Stack.Screen name="athlete-detail" options={{ presentation: 'modal' }} />
         <Stack.Screen name="team-edit" options={{ presentation: 'modal' }} />
         <Stack.Screen name="coach-planner" options={{ presentation: 'modal' }} />

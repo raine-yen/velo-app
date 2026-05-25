@@ -1,4 +1,5 @@
 import { View, StyleSheet } from 'react-native';
+import { useRouter } from 'expo-router';
 import { Moon } from 'lucide-react-native';
 
 import { Card } from '@/components/velo/Card';
@@ -13,6 +14,7 @@ import { formatHours, formatMinutes } from '@/lib/format';
 import { useHealthStore } from '@/stores/healthStore';
 
 export default function SleepDetailScreen() {
+  const router = useRouter();
   const colors = useColors();
   const snap = useHealthStore((s) => s.snapshot);
   const stages = snap?.sleepStages;
@@ -41,7 +43,7 @@ export default function SleepDetailScreen() {
         <MetricBar label="Awake" value={snap?.sleepAwakeMinutes ?? 0} max={90} detail={formatMinutes(snap?.sleepAwakeMinutes)} color={colors.warning} />
       </Card>
 
-      <InsightCard insight={insight} loading={loading} title="Sleep coach" />
+      <InsightCard insight={insight} loading={loading} title="Sleep coach" onPress={() => router.push('/ai-insight-detail?kind=sleep')} />
     </Screen>
   );
 }

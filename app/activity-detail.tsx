@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 import { View, StyleSheet } from 'react-native';
+import { useRouter } from 'expo-router';
 import { Activity, Flame, Footprints } from 'lucide-react-native';
 
 import { Card } from '@/components/velo/Card';
@@ -15,6 +16,7 @@ import { useHealthStore } from '@/stores/healthStore';
 import { getTodayWorkouts, useWorkoutStore } from '@/stores/workoutStore';
 
 export default function ActivityDetailScreen() {
+  const router = useRouter();
   const colors = useColors();
   const snap = useHealthStore((s) => s.snapshot);
   const workouts = useWorkoutStore((s) => s.workouts);
@@ -25,7 +27,7 @@ export default function ActivityDetailScreen() {
     <Screen>
       <View style={styles.header}>
         <Text variant="label" color="muted">Activity</Text>
-        <Text variant="display" weight="bold">Today's strain</Text>
+        <Text variant="display" weight="bold">Today&apos;s strain</Text>
       </View>
 
       <View style={styles.grid}>
@@ -36,7 +38,7 @@ export default function ActivityDetailScreen() {
 
       <Text variant="label" color="muted" style={styles.section}>Workouts</Text>
       {today.length ? today.map((workout) => (
-        <Card key={workout.id} style={styles.workout}>
+        <Card key={workout.id} style={styles.workout} onPress={() => router.push(`/workout-detail?id=${workout.id}`)}>
           <Text variant="body" weight="semibold">{workout.name}</Text>
           <Text variant="small" color="dim">
             {WORKOUT_LABEL[workout.type]} - {workout.durationMin} min
@@ -53,7 +55,7 @@ export default function ActivityDetailScreen() {
         </Card>
       )}
 
-      <InsightCard insight={insight} loading={loading} title="Training coach" />
+      <InsightCard insight={insight} loading={loading} title="Training coach" onPress={() => router.push('/ai-insight-detail?kind=training')} />
     </Screen>
   );
 }

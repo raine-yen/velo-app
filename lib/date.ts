@@ -17,6 +17,13 @@ export function startOfWeek(d: Date = new Date()): Date {
   return date;
 }
 
+export function startOfWeekSunday(d: Date = new Date()): Date {
+  const date = new Date(d);
+  date.setDate(date.getDate() - date.getDay());
+  date.setHours(0, 0, 0, 0);
+  return date;
+}
+
 export function isToday(iso: string): boolean {
   return iso.slice(0, 10) === isoDate();
 }

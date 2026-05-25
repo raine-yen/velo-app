@@ -17,8 +17,8 @@ export default function DoneStep() {
   const finishOnboarding = useUserStore((s) => s.finishOnboarding);
   const targets = profile.targets;
 
-  const handleStart = () => {
-    finishOnboarding();
+  const handleStart = async () => {
+    await finishOnboarding();
     router.replace('/(tabs)');
   };
 

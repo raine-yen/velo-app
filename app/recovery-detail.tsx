@@ -1,4 +1,5 @@
 import { View, StyleSheet } from 'react-native';
+import { useRouter } from 'expo-router';
 import { Activity, Heart, Moon } from 'lucide-react-native';
 
 import { Card } from '@/components/velo/Card';
@@ -13,6 +14,7 @@ import { formatHours } from '@/lib/format';
 import { computeRecoveryScore, useHealthStore } from '@/stores/healthStore';
 
 export default function RecoveryDetailScreen() {
+  const router = useRouter();
   const colors = useColors();
   const snap = useHealthStore((s) => s.snapshot);
   const score = computeRecoveryScore(snap) ?? 60;
@@ -41,7 +43,7 @@ export default function RecoveryDetailScreen() {
         <Marker icon={<Moon size={18} color={colors.accent} />} label="Sleep" value={formatHours(snap?.sleepHours)} />
       </View>
 
-      <InsightCard insight={insight} loading={loading} title="Recovery coach" />
+      <InsightCard insight={insight} loading={loading} title="Recovery coach" onPress={() => router.push('/ai-insight-detail?kind=recovery')} />
     </Screen>
   );
 }

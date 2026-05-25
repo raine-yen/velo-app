@@ -40,6 +40,8 @@ export type DailyTargets = {
   fat: number;
 };
 
+export type NutritionGoalId = 'calories' | 'protein' | 'carbs' | 'fat' | 'water' | 'fiber' | 'sodium';
+
 export type UserProfile = {
   name: string;
   sport: SportId | null;
@@ -114,6 +116,9 @@ export type WorkoutHealthData = {
   maxHeartRate?: number;
   caloriesBurned?: number;
   elevationGain?: number;
+  sourceName?: string;
+  sourceId?: string;
+  device?: string;
   // Running / cycling
   avgPaceMinPerKm?: number;
   avgCadence?: number;

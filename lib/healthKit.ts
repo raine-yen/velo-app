@@ -178,6 +178,9 @@ export async function fetchRecentWorkouts(days = 30): Promise<HealthKitWorkout[]
             const healthData: WorkoutHealthData = {
               caloriesBurned: r.totalEnergyBurned ? Math.round(r.totalEnergyBurned) : undefined,
               avgPaceMinPerKm: distanceKm && durationMin ? durationMin / distanceKm : undefined,
+              sourceName: r.sourceName,
+              sourceId: r.sourceId,
+              device: r.device,
             };
 
             await fetchAvgHR(r.startDate, r.endDate, healthData);

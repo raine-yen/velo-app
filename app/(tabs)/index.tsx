@@ -17,6 +17,7 @@ import { formatHours, formatMinutes, formatNumber } from '@/lib/format';
 import { SPORT_LABEL } from '@/lib/constants';
 import { computeRecoveryScore, useHealthStore } from '@/stores/healthStore';
 import { getTodayTotals, useNutritionStore } from '@/stores/nutritionStore';
+import { useNutritionGoalStore } from '@/stores/nutritionGoalStore';
 import { useUserStore } from '@/stores/userStore';
 import { computeReadiness, useWellnessStore } from '@/stores/wellnessStore';
 import { getTodayWorkouts, useWorkoutStore } from '@/stores/workoutStore';
@@ -26,6 +27,7 @@ export default function HomeScreen() {
   const colors = useColors();
   const profile = useUserStore((s) => s.profile);
   const meals = useNutritionStore((s) => s.meals);
+  const nutritionTargets = useNutritionGoalStore((s) => s.targets);
   const workouts = useWorkoutStore((s) => s.workouts);
   const checkIns = useWellnessStore((s) => s.checkIns);
   const healthSnap = useHealthStore((s) => s.snapshot);
@@ -62,7 +64,7 @@ export default function HomeScreen() {
             {getReadinessMessage(score, !!(healthSnap || checkIn))}
           </Text>
           <Text variant="small" color="dim" style={{ marginTop: Spacing.sm }}>
-            Tap for HRV, resting HR, sleep contribution, and today's training recommendation.
+            Tap for HRV, resting HR, sleep contribution, and today&apos;s training recommendation.
           </Text>
         </View>
         <MetricRing value={score} centerLabel={`${score}`} label={recoveryScore !== null ? 'recovery' : 'ready'} />
@@ -75,13 +77,13 @@ export default function HomeScreen() {
 
       <Text variant="label" color="muted" style={styles.sectionLabel}>Today</Text>
       <View style={styles.todayGrid}>
-        <TodayCard icon={<Apple size={18} color={colors.accent} />} label="Consumed" value={formatNumber(todayTotals.calories)} detail={`of ${profile.targets.calories} kcal`} onPress={() => router.push('/nutrition-detail')} />
+        <TodayCard icon={<Apple size={18} color={colors.accent} />} label="Consumed" value={formatNumber(todayTotals.calories)} detail={`of ${nutritionTargets.calories} kcal`} onPress={() => router.push('/nutrition-detail')} />
         <TodayCard icon={<Moon size={18} color={colors.accent} />} label="Sleep" value={formatHours(sleepHours)} detail={healthSnap?.sleepStages ? 'stages ready' : 'tap details'} onPress={() => router.push('/sleep-detail')} />
         <TodayCard icon={<Activity size={18} color={colors.accent} />} label="Active" value={formatMinutes(activeMinutes)} detail="Apple Exercise" onPress={() => router.push('/activity-detail')} />
         <TodayCard icon={<Flame size={18} color={colors.accent} />} label="Active kcal" value={formatNumber(activeCalories)} detail="Health burn" onPress={() => router.push('/activity-detail')} />
       </View>
 
-      <InsightCard insight={insight} loading={loading} title="Velo intelligence" />
+      <InsightCard insight={insight} loading={loading} title="Velo intelligence" onPress={() => router.push('/ai-insight-detail?kind=daily')} />
     </Screen>
   );
 }
@@ -124,7 +126,7 @@ const styles = StyleSheet.create({
   recoveryCopy: { flex: 1 },
   actionRow: { flexDirection: 'row', gap: Spacing.sm, marginBottom: Spacing.xl },
   sectionLabel: { marginBottom: Spacing.md },
-  todayGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.sm, marginBottom: Spacing.md },
-  todayCard: { width: '48%', minHeight: 116 },
+  todayGrid: { gap: Spacing.sm, marginBottom: Spacing.md },
+  todayCard: { minHeight: 104 },
   todayTop: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm },
 });
