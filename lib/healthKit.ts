@@ -12,6 +12,15 @@ const healthKit = AppleHealthKit as typeof AppleHealthKit & {
   isAvailable?: (callback: (error: unknown, result: boolean) => void) => void;
 };
 
+type HealthKitNativeModule = typeof AppleHealthKit & {
+  initHealthKit?: typeof AppleHealthKit.initHealthKit;
+  isAvailable?: (callback: (error: unknown, result: boolean) => void) => void;
+};
+
+function getHealthKitModule(): HealthKitNativeModule {
+  return (NativeModules.AppleHealthKit as HealthKitNativeModule | undefined) ?? healthKit;
+}
+
 const PERMS = {
   permissions: {
     read: [
@@ -58,7 +67,7 @@ function workoutName(activityId: number): string {
 }
 
 export function isHealthKitAvailable(): boolean {
-  return Platform.OS === 'ios' && typeof healthKit.initHealthKit === 'function';
+  return Platform.OS === 'ios' && typeof getHealthKitModule().initHealthKit === 'function';
 }
 
 export type HealthKitAvailability = {
@@ -78,7 +87,7 @@ export type HealthKitPermissionResult = {
 
 export function getHealthKitAvailability(): HealthKitAvailability {
   const nativeModuleLoaded = !!NativeModules.AppleHealthKit;
-  const permissionApiLoaded = typeof healthKit.initHealthKit === 'function';
+  const permissionApiLoaded = typeof getHealthKitModule().initHealthKit === 'function';
   let message: string | null = null;
 
   if (Platform.OS !== 'ios') message = 'Apple Health is only available on iOS.';
@@ -114,7 +123,7 @@ export function requestHealthKitPermissions(): Promise<HealthKitPermissionResult
       return;
     }
 
-    healthKit.initHealthKit(PERMS, (err) => {
+    getHealthKitModule().initHealthKit?.(PERMS, (err) => {
       if (err) {
         resolve({
           requested: true,
@@ -149,7 +158,7 @@ export async function fetchRecentWorkouts(days = 30): Promise<HealthKitWorkout[]
     const startDate = new Date();
     startDate.setDate(startDate.getDate() - days);
 
-    AppleHealthKit.getSamples(
+    getHealthKitModule().getSamples(
       {
         startDate: startDate.toISOString(),
         endDate: new Date().toISOString(),
@@ -219,7 +228,7 @@ function fetchSleep(out: DailyHealthSnapshot): Promise<void> {
     const now = new Date();
     now.setHours(14, 0, 0, 0); // 2pm today
 
-    AppleHealthKit.getSleepSamples(
+    getHealthKitModule().getSleepSamples(
       { startDate: yesterday.toISOString(), endDate: now.toISOString() } as any,
       (err: any, samples: any[]) => {
         if (!err && samples?.length) {
@@ -245,7 +254,7 @@ function fetchRestingHR(out: DailyHealthSnapshot): Promise<void> {
     const startDate = new Date();
     startDate.setDate(startDate.getDate() - 1);
 
-    AppleHealthKit.getRestingHeartRate(
+    getHealthKitModule().getRestingHeartRate(
       { startDate: startDate.toISOString(), limit: 1 } as any,
       (err: any, result: any) => {
         if (!err && result?.value) out.restingHR = Math.round(result.value);
@@ -260,7 +269,7 @@ function fetchHRV(out: DailyHealthSnapshot): Promise<void> {
     const startDate = new Date();
     startDate.setDate(startDate.getDate() - 1);
 
-    AppleHealthKit.getHeartRateVariabilitySamples(
+    getHealthKitModule().getHeartRateVariabilitySamples(
       { startDate: startDate.toISOString(), limit: 10, ascending: false } as any,
       (err: any, samples: HealthValue[]) => {
         if (!err && samples?.length) {
@@ -278,7 +287,7 @@ function fetchSteps(out: DailyHealthSnapshot): Promise<void> {
     const startDate = new Date();
     startDate.setHours(0, 0, 0, 0);
 
-    AppleHealthKit.getStepCount(
+    getHealthKitModule().getStepCount(
       { startDate: startDate.toISOString() } as any,
       (err: any, result: any) => {
         if (!err && result?.value) out.steps = Math.round(result.value);
@@ -293,7 +302,7 @@ function fetchVO2Max(out: DailyHealthSnapshot): Promise<void> {
     const startDate = new Date();
     startDate.setMonth(startDate.getMonth() - 3);
 
-    AppleHealthKit.getVo2MaxSamples(
+    getHealthKitModule().getVo2MaxSamples(
       { startDate: startDate.toISOString(), limit: 1, ascending: false } as any,
       (err: any, samples: HealthValue[]) => {
         if (!err && samples?.length) out.vo2Max = Math.round(samples[0].value * 10) / 10;
@@ -308,7 +317,7 @@ function fetchWeight(out: DailyHealthSnapshot): Promise<void> {
     const startDate = new Date();
     startDate.setMonth(startDate.getMonth() - 1);
 
-    AppleHealthKit.getLatestWeight(
+    getHealthKitModule().getLatestWeight(
       { unit: 'kg' } as any,
       (err: any, result: any) => {
         if (!err && result?.value) out.weightKg = Math.round(result.value * 10) / 10;
@@ -320,7 +329,7 @@ function fetchWeight(out: DailyHealthSnapshot): Promise<void> {
 
 function fetchAvgHR(start: string, end: string, out: WorkoutHealthData): Promise<void> {
   return new Promise((resolve) => {
-    AppleHealthKit.getHeartRateSamples(
+    getHealthKitModule().getHeartRateSamples(
       { startDate: start, endDate: end, ascending: false, limit: 100 } as any,
       (err: any, samples: HealthValue[]) => {
         if (!err && samples?.length) {
