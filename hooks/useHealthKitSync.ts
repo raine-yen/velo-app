@@ -42,6 +42,16 @@ function buildMockSnapshot(): DailyHealthSnapshot {
     restingHR: 52 + (seed % 8),
     avgHRV: 58 + (seed % 20),
     steps: 4800 + (seed % 5) * 800,
+    activeMinutes: 22 + (seed % 4) * 8,
+    activeCalories: 180 + (seed % 5) * 45,
+    basalCalories: 1450,
+    sleepStages: {
+      remMin: 84,
+      coreMin: 268,
+      deepMin: 72,
+      asleepMin: 424,
+    },
+    sleepAwakeMinutes: 18,
     vo2Max: 52.4,
     weightKg: 74.2,
   };

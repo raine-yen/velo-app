@@ -1,16 +1,17 @@
 import { useMemo } from 'react';
-import { View, StyleSheet, Pressable } from 'react-native';
+import { Platform, View, StyleSheet, Pressable } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Plus, Zap, Pencil, Heart, Eye, EyeOff } from 'lucide-react-native';
-import { Platform } from 'react-native';
 import { useTeamStore } from '@/stores/teamStore';
 
 import { Screen } from '@/components/velo/Screen';
 import { Text } from '@/components/velo/Text';
 import { Card } from '@/components/velo/Card';
 import { Button } from '@/components/velo/Button';
+import { InsightCard } from '@/components/velo/InsightCard';
 import { Spacing } from '@/constants/theme';
 import { useColors } from '@/hooks/useColors';
+import { useVeloInsight } from '@/hooks/useVeloInsight';
 import { getWeekActiveMin, useWorkoutStore } from '@/stores/workoutStore';
 import { SwipeToDelete } from '@/components/velo/SwipeToDelete';
 import { WORKOUT_LABEL } from '@/lib/constants';
@@ -24,6 +25,7 @@ export default function TrainingScreen() {
   const colors = useColors();
   const workouts = useWorkoutStore((s) => s.workouts);
   const removeWorkout = useWorkoutStore((s) => s.removeWorkout);
+  const { insight, loading } = useVeloInsight('training');
 
   const todayIdx = (() => { const d = new Date().getDay(); return d === 0 ? 6 : d - 1; })();
   const weekActiveMin = useMemo(() => getWeekActiveMin(workouts), [workouts]);
@@ -31,6 +33,7 @@ export default function TrainingScreen() {
   const todaysWorkouts = useMemo(() => workouts.filter((w) => isToday(w.completedAt)), [workouts]);
   const weekWorkouts = useMemo(() => workouts.filter((w) => isThisWeek(w.completedAt)), [workouts]);
   const recent = useMemo(() => weekWorkouts.slice(0, 5), [weekWorkouts]);
+  const weekDistance = useMemo(() => Math.round(weekWorkouts.reduce((acc, w) => acc + (w.distanceKm ?? 0), 0) * 10) / 10, [weekWorkouts]);
   const avgIntensity = recent.length
     ? Math.round((recent.reduce((acc, w) => acc + w.intensity, 0) / recent.length) * 10) / 10
     : 0;
@@ -42,19 +45,25 @@ export default function TrainingScreen() {
         <Text variant="display" weight="bold" style={{ marginTop: Spacing.xs }}>This week</Text>
       </View>
 
-      <View style={styles.weekRow}>
-        {DAYS.map((d, i) => (
-          <View key={i} style={styles.dayWrap}>
-            <Text variant="caption" color={i === todayIdx ? 'accent' : 'dim'}>{d}</Text>
-            <View style={[
-              styles.dayDot,
-              { backgroundColor: colors.border },
-              weekWorkoutsByDay[i] && { backgroundColor: colors.accentMuted },
-              i === todayIdx && { backgroundColor: colors.accent },
-            ]} />
-          </View>
-        ))}
-      </View>
+      <Card style={styles.calendarCard}>
+        <View style={styles.weekRow}>
+          {DAYS.map((d, i) => (
+            <View key={i} style={styles.dayWrap}>
+              <Text variant="caption" color={i === todayIdx ? 'accent' : 'dim'}>{d}</Text>
+              <View style={[styles.dayBar, { backgroundColor: colors.surfaceElevated, borderColor: i === todayIdx ? colors.accent : colors.border }]}>
+                <View style={[
+                  styles.dayFill,
+                  {
+                    height: `${Math.min(100, Math.max(8, (weekWorkoutsByDay[i].minutes / 90) * 100))}%`,
+                    backgroundColor: weekWorkoutsByDay[i].minutes > 0 ? colors.accent : colors.border,
+                  },
+                ]} />
+              </View>
+              <Text variant="caption" color="dim">{weekWorkoutsByDay[i].minutes || '-'}</Text>
+            </View>
+          ))}
+        </View>
+      </Card>
 
       <View style={{ flexDirection: 'row', gap: Spacing.sm, marginTop: Spacing.lg, marginBottom: Spacing.xl }}>
         <Button label="Log workout" icon={<Plus size={18} color="#0a0a0a" strokeWidth={2.5} />}
@@ -78,7 +87,7 @@ export default function TrainingScreen() {
         <Card>
           <Text variant="caption" color="dim">NO WORKOUT YET</Text>
           <Text variant="title" style={{ marginTop: Spacing.sm }}>Open day</Text>
-          <Text variant="body" color="muted" style={{ marginTop: Spacing.sm }}>Recovery is part of the work, but if you trained — log it.</Text>
+          <Text variant="body" color="muted" style={{ marginTop: Spacing.sm }}>Recovery is part of the work, but if you trained - log it.</Text>
         </Card>
       )}
 
@@ -99,8 +108,10 @@ export default function TrainingScreen() {
       <View style={styles.statRow}>
         <SummaryCard label="Sessions" value={`${weekWorkouts.length}`} />
         <SummaryCard label="Active min" value={`${weekActiveMin}`} />
-        <SummaryCard label="Avg intensity" value={avgIntensity > 0 ? `${avgIntensity}` : '—'} />
+        <SummaryCard label="Distance" value={weekDistance > 0 ? `${weekDistance}` : '-'} />
+        <SummaryCard label="Avg intensity" value={avgIntensity > 0 ? `${avgIntensity}` : '-'} />
       </View>
+      <InsightCard insight={insight} loading={loading} title="Load this week" />
     </Screen>
   );
 }
@@ -127,7 +138,7 @@ function WorkoutRow({ workout, showDay = false, colors }: { workout: Workout; sh
     hd?.avgHeartRate ? `${hd.avgHeartRate} bpm` : null,
     hd?.caloriesBurned ? `${hd.caloriesBurned} kcal` : null,
     !hd ? `${workout.intensity}/10` : null,
-  ].filter(Boolean).join(' · ');
+  ].filter(Boolean).join(' - ');
 
   return (
     <Card style={styles.workoutRow}>
@@ -165,24 +176,32 @@ function SummaryCard({ label, value }: { label: string; value: string }) {
   );
 }
 
-function computeWeekDays(workouts: Workout[]): boolean[] {
-  const week = [false, false, false, false, false, false, false];
+function computeWeekDays(workouts: Workout[]): { minutes: number; intensity: number }[] {
+  const week = Array.from({ length: 7 }, () => ({ minutes: 0, intensity: 0, count: 0 }));
   workouts.filter((w) => isThisWeek(w.completedAt)).forEach((w) => {
     const d = new Date(w.completedAt).getDay();
-    week[d === 0 ? 6 : d - 1] = true;
+    const idx = d === 0 ? 6 : d - 1;
+    week[idx].minutes += w.durationMin;
+    week[idx].intensity += w.intensity;
+    week[idx].count += 1;
   });
-  return week;
+  return week.map((day) => ({
+    minutes: day.minutes,
+    intensity: day.count ? Math.round((day.intensity / day.count) * 10) / 10 : 0,
+  }));
 }
 
 const styles = StyleSheet.create({
   header: { marginTop: Spacing.lg, marginBottom: Spacing.xl },
+  calendarCard: { marginBottom: Spacing.md },
   weekRow: { flexDirection: 'row', justifyContent: 'space-between' },
   dayWrap: { alignItems: 'center', gap: Spacing.sm },
-  dayDot: { width: 8, height: 8, borderRadius: 4 },
+  dayBar: { width: 26, height: 78, borderRadius: 13, borderWidth: 1, overflow: 'hidden', justifyContent: 'flex-end' },
+  dayFill: { width: '100%', borderRadius: 13 },
   sectionLabel: { marginBottom: Spacing.md },
   list: { gap: Spacing.sm },
   workoutRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.md },
   workoutIcon: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
-  statRow: { flexDirection: 'row', gap: Spacing.md },
+  statRow: { flexDirection: 'row', gap: Spacing.sm, marginBottom: Spacing.md },
   summaryCard: { flex: 1, alignItems: 'flex-start' },
 });

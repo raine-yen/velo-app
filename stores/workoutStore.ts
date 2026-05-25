@@ -21,6 +21,8 @@ type WorkoutState = {
     source?: import('@/types').WorkoutSource;
     healthData?: import('@/types').WorkoutHealthData;
     appleId?: string;
+    stravaId?: string;
+    completedAt?: string;
   }) => void;
   editWorkout: (id: string, data: Partial<Omit<Workout, 'id' | 'completedAt'>>) => void;
   toggleWorkoutPrivate: (id: string) => void;
@@ -30,14 +32,19 @@ type WorkoutState = {
 
 export const useWorkoutStore = create<WorkoutState>()(
   persist(
-    (set) => ({
+    (set, get) => ({
       workouts: [],
       lastHealthSync: null,
       setLastHealthSync: (ts) => set({ lastHealthSync: ts }),
 
       logWorkout: (data) => {
-        const workout: Workout = { id: uid(), ...data, completedAt: (data as any).completedAt ?? new Date().toISOString() };
-        set((s) => ({ workouts: [workout, ...s.workouts] }));
+        const workout: Workout = { id: uid(), ...data, completedAt: data.completedAt ?? new Date().toISOString() };
+        const existing = get().workouts;
+        if (workout.appleId && existing.some((w) => w.appleId === workout.appleId)) return;
+        if (workout.stravaId && existing.some((w) => w.stravaId === workout.stravaId)) return;
+        set((s) => {
+          return { workouts: [workout, ...s.workouts] };
+        });
         supabase.auth.getSession().then(({ data: d }) => {
           if (d.session?.user) pushWorkout(d.session.user.id, workout);
         });
@@ -77,7 +84,7 @@ export const useWorkoutStore = create<WorkoutState>()(
   ),
 );
 
-// Pure helpers — call from useMemo with raw `workouts` array.
+// Pure helpers - call from useMemo with raw `workouts` array.
 export function getTodayWorkouts(workouts: Workout[]): Workout[] {
   return workouts.filter((w) => isToday(w.completedAt));
 }

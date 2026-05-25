@@ -127,6 +127,8 @@ export type WorkoutHealthData = {
 
 export type Workout = {
   id: string;
+  appleId?: string;
+  stravaId?: string;
   type: WorkoutType;
   name: string;
   durationMin: number;

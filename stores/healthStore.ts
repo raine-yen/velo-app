@@ -7,12 +7,21 @@ export type DailyHealthSnapshot = {
   syncedAt: string; // ISO timestamp
   // Sleep
   sleepHours?: number;
+  sleepStages?: {
+    remMin: number;
+    coreMin: number;
+    deepMin: number;
+    asleepMin: number;
+  };
+  sleepAwakeMinutes?: number;
   // Heart
   restingHR?: number;
   avgHRV?: number; // SDNN ms
   // Activity
   steps?: number;
+  activeMinutes?: number;
   activeCalories?: number;
+  basalCalories?: number;
   // Fitness
   vo2Max?: number;
   // Body
@@ -100,6 +109,14 @@ export function computeRecoveryScore(snap: DailyHealthSnapshot | null): number |
 
   if (parts.length === 0) return null;
   return Math.round(parts.reduce((a, b) => a + b, 0) / parts.length);
+}
+
+export function computeStrainScore(snap: DailyHealthSnapshot | null): number {
+  if (!snap) return 0;
+  const activeScore = Math.min(50, ((snap.activeMinutes ?? 0) / 60) * 35);
+  const calorieScore = Math.min(35, ((snap.activeCalories ?? 0) / 600) * 35);
+  const stepScore = Math.min(15, ((snap.steps ?? 0) / 10000) * 15);
+  return Math.round(activeScore + calorieScore + stepScore);
 }
 
 // Simple stress estimate (inverse of recovery)

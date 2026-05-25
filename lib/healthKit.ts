@@ -29,6 +29,8 @@ const PERMS = {
       AppleHealthKit.Constants.Permissions.RestingHeartRate,
       AppleHealthKit.Constants.Permissions.HeartRateVariability,
       AppleHealthKit.Constants.Permissions.ActiveEnergyBurned,
+      AppleHealthKit.Constants.Permissions.BasalEnergyBurned,
+      AppleHealthKit.Constants.Permissions.AppleExerciseTime,
       AppleHealthKit.Constants.Permissions.DistanceWalkingRunning,
       AppleHealthKit.Constants.Permissions.DistanceCycling,
       AppleHealthKit.Constants.Permissions.DistanceSwimming,
@@ -41,7 +43,7 @@ const PERMS = {
   },
 } as HealthKitPermissions;
 
-// Apple HKWorkoutActivityType → our WorkoutType
+// Apple HKWorkoutActivityType -> our WorkoutType
 const ACTIVITY_MAP: Record<number, WorkoutType> = {
   37: 'run',
   13: 'ride',
@@ -212,6 +214,9 @@ export async function fetchDailySnapshot(): Promise<DailyHealthSnapshot> {
     fetchRestingHR(snap),
     fetchHRV(snap),
     fetchSteps(snap),
+    fetchActiveEnergy(snap),
+    fetchBasalEnergy(snap),
+    fetchExerciseTime(snap),
     fetchVO2Max(snap),
     fetchWeight(snap),
   ]);
@@ -232,16 +237,80 @@ function fetchSleep(out: DailyHealthSnapshot): Promise<void> {
       { startDate: yesterday.toISOString(), endDate: now.toISOString() } as any,
       (err: any, samples: any[]) => {
         if (!err && samples?.length) {
-          // Sum asleep stages only (value 1 = asleep, 2 = core, 3 = deep, 4 = REM)
-          const asleepMs = samples
-            .filter((s) => s.value !== 'INBED')
-            .reduce((acc, s) => {
-              const start = new Date(s.startDate).getTime();
-              const end = new Date(s.endDate).getTime();
-              return acc + (end - start);
-            }, 0);
-          const hours = asleepMs / (1000 * 60 * 60);
+          const totals = samples.reduce(
+            (acc, s) => {
+              const minutes = Math.max(0, (new Date(s.endDate).getTime() - new Date(s.startDate).getTime()) / 60000);
+              if (s.value === 'REM') acc.remMin += minutes;
+              else if (s.value === 'CORE') acc.coreMin += minutes;
+              else if (s.value === 'DEEP') acc.deepMin += minutes;
+              else if (s.value === 'ASLEEP') acc.asleepMin += minutes;
+              else if (s.value === 'AWAKE') acc.awakeMin += minutes;
+              return acc;
+            },
+            { remMin: 0, coreMin: 0, deepMin: 0, asleepMin: 0, awakeMin: 0 },
+          );
+          const stagedMin = totals.remMin + totals.coreMin + totals.deepMin;
+          const sleepMin = stagedMin > 0 ? stagedMin : totals.asleepMin;
+          const hours = sleepMin / 60;
           if (hours > 0) out.sleepHours = Math.round(hours * 10) / 10;
+          out.sleepStages = {
+            remMin: Math.round(totals.remMin),
+            coreMin: Math.round(totals.coreMin),
+            deepMin: Math.round(totals.deepMin),
+            asleepMin: Math.round(sleepMin),
+          };
+          out.sleepAwakeMinutes = Math.round(totals.awakeMin);
+        }
+        resolve();
+      }
+    );
+  });
+}
+
+function fetchActiveEnergy(out: DailyHealthSnapshot): Promise<void> {
+  return new Promise((resolve) => {
+    const startDate = new Date();
+    startDate.setHours(0, 0, 0, 0);
+
+    getHealthKitModule().getActiveEnergyBurned(
+      { startDate: startDate.toISOString(), endDate: new Date().toISOString() } as any,
+      (err: any, samples: HealthValue[]) => {
+        if (!err && samples?.length) {
+          out.activeCalories = Math.round(samples.reduce((sum, sample) => sum + (sample.value ?? 0), 0));
+        }
+        resolve();
+      }
+    );
+  });
+}
+
+function fetchBasalEnergy(out: DailyHealthSnapshot): Promise<void> {
+  return new Promise((resolve) => {
+    const startDate = new Date();
+    startDate.setHours(0, 0, 0, 0);
+
+    getHealthKitModule().getBasalEnergyBurned(
+      { startDate: startDate.toISOString(), endDate: new Date().toISOString() } as any,
+      (err: any, samples: HealthValue[]) => {
+        if (!err && samples?.length) {
+          out.basalCalories = Math.round(samples.reduce((sum, sample) => sum + (sample.value ?? 0), 0));
+        }
+        resolve();
+      }
+    );
+  });
+}
+
+function fetchExerciseTime(out: DailyHealthSnapshot): Promise<void> {
+  return new Promise((resolve) => {
+    const startDate = new Date();
+    startDate.setHours(0, 0, 0, 0);
+
+    getHealthKitModule().getAppleExerciseTime(
+      { startDate: startDate.toISOString(), endDate: new Date().toISOString() } as any,
+      (err: any, samples: HealthValue[]) => {
+        if (!err && samples?.length) {
+          out.activeMinutes = Math.round(samples.reduce((sum, sample) => sum + (sample.value ?? 0), 0));
         }
         resolve();
       }
